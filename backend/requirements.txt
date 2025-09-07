@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+alembic
+python-multipart
+pyjwt
+passlib[bcrypt]
+pillow
+aiofiles

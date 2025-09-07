@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --accent-teal: #14b8a6;
+  --accent-yellow: #facc15;
+  --accent-blue: #3b82f6;
+  --accent-green: #22c55e;
+}
+
+/* Glassmorphism helpers */
+.glass {
+  @apply bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10;
+}
+.glass-card {
+  @apply glass rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.25)];
+}
+.glow-border {
+  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.35), 0 0 18px rgba(20, 184, 166, 0.25);
+}
+
+/* Hover zoom for images */
+.hover-zoom {
+  transition: transform .45s cubic-bezier(.2,.8,.2,1);
+}
+.hover-zoom:hover {
+  transform: scale(1.04);
+}
+
+/* Ripple effect for buttons */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+.ripple:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,.35) 10%, transparent 10%) center/10px 10px;
+  opacity: 0;
+  transition: opacity .4s;
+}
+.ripple:active:after { opacity: 1; transition: none; }
+
+/* Gradient chips */
+.chip {
+  @apply text-[11px] px-2 py-1 rounded-full border;
+  border-color: rgba(255,255,255,0.2);
+}
+.chip-gradient {
+  background: linear-gradient(135deg, rgba(20,184,166,.25), rgba(59,130,246,.25));
+}
+
+/* Floating labels */
+.field { @apply relative; }
+.field input, .field textarea, .field select {
+  @apply w-full px-3 pt-5 pb-2 rounded-xl border dark:border-gray-800 bg-white/70 dark:bg-gray-900/60 focus:outline-none focus:ring-2 focus:ring-teal-500;
+}
+.field label {
+  @apply absolute left-3 top-2 text-xs text-gray-500 transition-all pointer-events-none;
+}
+
