@@ -123,20 +123,32 @@ def change_password(payload: ChangePasswordRequest, db: Session = Depends(get_db
 
 
 def _set_auth_cookies(response: Response, access: str, refresh: str):
-    # HttpOnly cookies for security; in dev SameSite=Lax is fine
+    # HttpOnly cookies for security.
+    # For production HTTPS and cross-site (frontend on app.* calling api.*), use SameSite=None and Secure.
+    # You can override cookie domain via env COOKIE_DOMAIN (e.g. .clickscapeindia.com)
+    env = os.getenv("ENV", "production").lower()
+    cookie_domain = os.getenv("COOKIE_DOMAIN", None)
+    is_https = os.getenv("COOKIE_SECURE", "true").lower() in {"1", "true", "yes"}
+    # Default to None for dev, "none" for production
+    samesite = os.getenv("COOKIE_SAMESITE", "none" if is_https else "lax").lower()
+    if samesite not in {"lax", "strict", "none"}:
+        samesite = "none" if is_https else "lax"
+
     response.set_cookie(
         key="access_token",
         value=access,
         httponly=True,
-        samesite="lax",
-        secure=False,
+        samesite=samesite,  # use "none" for cross-site
+        secure=is_https,    # must be True when samesite="none"
         path="/",
+        domain=cookie_domain if cookie_domain else None,
     )
     response.set_cookie(
         key="refresh_token",
         value=refresh,
         httponly=True,
-        samesite="lax",
-        secure=False,
+        samesite=samesite,
+        secure=is_https,
         path="/",
+        domain=cookie_domain if cookie_domain else None,
     )
