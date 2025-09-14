@@ -13,11 +13,18 @@ app = FastAPI(title="ClickScape API", version="0.1.0")
 
 # CORS settings
 # IMPORTANT: When using cookies (allow_credentials=True), you must NOT use "*".
-# Specify exact dev origins here.
+# Specify exact dev origins here and include production by default.
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://app.clickscapeindia.com",
+    "http://app.clickscapeindia.com",
 ]
+
+# Allow overriding origins via env var FRONTEND_ORIGINS (comma-separated)
+_env_origins = os.getenv("FRONTEND_ORIGINS")
+if _env_origins:
+    origins = [o.strip() for o in _env_origins.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
