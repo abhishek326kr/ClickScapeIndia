@@ -8,3 +8,4 @@ pyjwt
 passlib[bcrypt]
 pillow
 aiofiles
+email-validator

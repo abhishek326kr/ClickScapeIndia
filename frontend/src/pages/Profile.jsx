@@ -80,7 +80,7 @@ export default function Profile() {
   return (
     <section className="max-w-6xl mx-auto px-4 py-10">
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold tracking-tight">Dashboard</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight">My Profile</h1>
         <p className="text-gray-500">Manage uploads, participation, and growth.</p>
       </div>
 
