@@ -10,4 +10,10 @@ class Photo(Base):
     tags = Column(String, default="")
     price = Column(Float, default=0.0)
     watermark = Column(Boolean, default=False)
-    url = Column(String, nullable=True)
+    # processed_url: the watermarked/derived image (free users see this)
+    url = Column(String, nullable=True)  # legacy field kept for compatibility
+    processed_url = Column(String, nullable=True)
+    # original_url: the original uploaded file (premium export uses this)
+    original_url = Column(String, nullable=True)
+    # bytes_size: original file size in bytes (for quota)
+    bytes_size = Column(Integer, default=0)

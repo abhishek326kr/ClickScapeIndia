@@ -12,6 +12,18 @@ import { useState, useMemo, useEffect } from 'react'
 import { ToastProvider } from './components/ToastProvider.jsx'
 import UserMenu from './components/UserMenu.jsx'
 import MyVotes from './pages/MyVotes.jsx'
+import PlanProvider, { usePlan } from './components/PlanProvider.jsx'
+
+function AdsBar() {
+  const { plan } = usePlan()
+  if (plan === 'premium') return null
+  return (
+    <div className="sticky bottom-0 z-20 w-full bg-amber-50 dark:bg-amber-900/20 border-t border-amber-200 dark:border-amber-800 px-4 py-3 text-sm flex items-center justify-between">
+      <div className="text-amber-800 dark:text-amber-200">You're on the Free plan. Get high‑res export, batch uploads, RAW/PSD and no watermark with Premium.</div>
+      <a className="px-3 py-1.5 rounded bg-amber-600 text-white hover:bg-amber-700" href="#/upgrade">Upgrade</a>
+    </div>
+  )
+}
 
 export default function App() {
   const location = useLocation()
@@ -30,6 +42,7 @@ export default function App() {
 
   return (
     <ToastProvider>
+      <PlanProvider>
       <div className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
         {!isAuthPage && (
           <Sidebar width={sidebarWidth} open={sidebarOpen} onClose={() => setSidebarOpen(false)} onOpen={() => setSidebarOpen(true)} />
@@ -69,8 +82,10 @@ export default function App() {
             </Routes>
           </div>
           {!isAuthPage && <Footer />}
+          {!isAuthPage && <AdsBar />}
         </main>
       </div>
+      </PlanProvider>
     </ToastProvider>
   )
 }

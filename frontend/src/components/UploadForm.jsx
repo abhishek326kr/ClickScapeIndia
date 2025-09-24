@@ -1,19 +1,37 @@
 import { useState } from 'react'
 import api from '../lib/api.js'
 import { useToast } from './ToastProvider.jsx'
+import { usePlan } from './PlanProvider.jsx'
 
 export default function UploadForm() {
+  const { plan } = usePlan()
   // Keep price as a string to avoid React NaN warnings when the field is cleared
   const [form, setForm] = useState({ title: '', category: '', tags: '', price: '', image: null })
   const [status, setStatus] = useState(null)
   const toast = useToast()
   const [dragOver, setDragOver] = useState(false)
 
+  const allowedExts = plan === 'premium'
+    ? ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.raw', '.psd']
+    : ['.jpg', '.jpeg', '.png']
+  const maxMb = plan === 'premium' ? 25 : 3
+
   const onSubmit = async (e) => {
     e.preventDefault()
     if (!form.title.trim()) { toast.push({ type: 'error', message: 'Title is required' }); return }
     if (!form.category.trim()) { toast.push({ type: 'error', message: 'Category is required' }); return }
     if (!form.image) { toast.push({ type: 'error', message: 'Please choose an image' }); return }
+    // client-side validation
+    const name = form.image.name || ''
+    const ext = name.slice(name.lastIndexOf('.')).toLowerCase()
+    if (!allowedExts.includes(ext)) {
+      toast.push({ type: 'error', message: `Unsupported file type for ${plan} plan. Allowed: ${allowedExts.join(', ')}` })
+      return
+    }
+    if (form.image.size > maxMb * 1024 * 1024) {
+      toast.push({ type: 'error', message: `File too large for ${plan} plan. Max ${maxMb} MB.` })
+      return
+    }
     const data = new FormData()
     Object.entries(form).forEach(([k, v]) => {
       if (k === 'image') {
@@ -63,8 +81,12 @@ export default function UploadForm() {
         onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) setForm({ ...form, image: f }) }}
       >
         <div className="text-sm text-gray-400">Drag & drop image here, or</div>
-        <div className="mt-2"><input type="file" accept="image/*" onChange={e => setForm({ ...form, image: e.target.files?.[0] || null })} /></div>
+        <div className="mt-2"><input type="file" accept={allowedExts.join(',')} onChange={e => setForm({ ...form, image: e.target.files?.[0] || null })} /></div>
         {form.image && <div className="mt-2 text-xs text-gray-500">Selected: {form.image.name}</div>}
+        <div className="mt-2 text-xs text-gray-500">Max size: {maxMb} MB | Allowed: {allowedExts.join(', ')}</div>
+        {plan !== 'premium' && (
+          <div className="mt-2 text-xs text-amber-700">Free plan applies watermark and web compression. <a className="underline" href="#/upgrade">Upgrade</a> for high‑res, RAW/PSD, and no watermark.</div>
+        )}
       </div>
 
       <button className="ripple px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg">Upload</button>

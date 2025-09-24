@@ -5,6 +5,7 @@ import os
 from sqlalchemy import text
 
 from .routes import auth, photos, votes, leaderboard, users, competitions, marketplace
+from .routes import ai as ai_routes
 from .routes import dashboard
 from .database import Base, engine
 from . import models  # noqa: F401 ensures models are imported for table creation
@@ -55,6 +56,7 @@ app.include_router(users.router, prefix="/users", tags=["users"])  # placeholder
 app.include_router(competitions.router, prefix="/competitions", tags=["competitions"])  # placeholder
 app.include_router(marketplace.router, prefix="/marketplace", tags=["marketplace"])  # placeholder
 app.include_router(dashboard.router, tags=["dashboard"])  # contains /dashboard/summary
+app.include_router(ai_routes.router, prefix="/ai", tags=["ai"])  # premium-only features
 
 # Create tables in development (use Alembic for migrations in production)
 Base.metadata.create_all(bind=engine)
@@ -83,3 +85,12 @@ _ensure_sqlite_column("votes", "user_id", "user_id INTEGER")
 
 # Add 'avatar_url' to profiles if missing
 _ensure_sqlite_column("profiles", "avatar_url", "avatar_url VARCHAR(512) DEFAULT ''")
+
+# Add new plan/quota columns to users in dev
+_ensure_sqlite_column("users", "plan", "plan VARCHAR(32) DEFAULT 'free'")
+_ensure_sqlite_column("users", "storage_used", "storage_used INTEGER DEFAULT 0")
+
+# Add new photo storage/export columns in dev
+_ensure_sqlite_column("photos", "processed_url", "processed_url VARCHAR(1024)")
+_ensure_sqlite_column("photos", "original_url", "original_url VARCHAR(1024)")
+_ensure_sqlite_column("photos", "bytes_size", "bytes_size INTEGER DEFAULT 0")

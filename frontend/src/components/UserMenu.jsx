@@ -6,6 +6,7 @@ export default function UserMenu() {
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
+  const [plan, setPlan] = useState('free')
   const ref = useRef(null)
   const navigate = useNavigate()
 
@@ -14,6 +15,7 @@ export default function UserMenu() {
       try {
         const res = await api.get('/auth/me')
         setEmail(res.data?.email || '')
+        setPlan(res.data?.plan || 'free')
         // also load profile for avatar
         try {
           const p = await api.get('/users/me/profile')
@@ -55,6 +57,14 @@ export default function UserMenu() {
           <div className="px-4 py-3 text-sm border-b dark:border-gray-800">
             <div className="font-semibold">Account</div>
             <div className="text-gray-500 truncate">{email || '—'}</div>
+            <div className="mt-1 flex items-center gap-2">
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${plan === 'premium' ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-200' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>
+                {plan === 'premium' ? 'Premium' : 'Free'}
+              </span>
+              {plan !== 'premium' && (
+                <button className="text-xs text-amber-700 hover:underline" onClick={() => { setOpen(false); navigate('/profile#upgrade') }}>Upgrade</button>
+              )}
+            </div>
           </div>
           <div className="py-1">
             <button className="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800" onClick={() => { setOpen(false); navigate('/profile') }}>Dashboard</button>

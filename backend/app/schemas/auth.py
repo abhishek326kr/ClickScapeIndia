@@ -7,6 +7,7 @@ class SignUpRequest(BaseModel):
     role: Literal["participant", "creator"] = "participant"
     name: Optional[str] = ""
     phone: Optional[str] = ""
+    plan: Literal["free", "premium"] = "free"
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -25,3 +26,4 @@ class ChangePasswordRequest(BaseModel):
 class MeResponse(BaseModel):
     email: EmailStr
     role: str
+    plan: Literal["free", "premium"] = "free"

@@ -7,3 +7,8 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     role = Column(String, default="participant")  # participant | creator
+    # Plan and quota tracking
+    # plan: 'free' or 'premium'
+    plan = Column(String, default="free")
+    # storage_used: total bytes used by this user (premium only enforced)
+    storage_used = Column(Integer, default=0)

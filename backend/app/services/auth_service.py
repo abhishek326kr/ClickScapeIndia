@@ -59,6 +59,7 @@ class AuthService:
             email=payload.email,
             password_hash=self._hash_password(payload.password),
             role=payload.role,
+            plan=getattr(payload, "plan", "free"),
         )
         self.db.add(user)
         self.db.commit()

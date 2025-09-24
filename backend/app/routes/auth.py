@@ -70,7 +70,7 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
 
 @router.get("/me", response_model=MeResponse)
 def me(user: User = Depends(get_current_user)) -> Dict[str, str]:
-    return {"email": user.email, "role": user.role}
+    return {"email": user.email, "role": user.role, "plan": getattr(user, "plan", "free")}
 
 
 @router.post("/refresh", response_model=AuthResponse)

@@ -10,6 +10,9 @@ class PhotoOut(BaseModel):
     price: float
     watermark: bool
     url: Optional[str] = None
+    processed_url: Optional[str] = None
+    original_url: Optional[str] = None
+    bytes_size: Optional[int] = 0
     owner_name: Optional[str] = None
     owner_avatar_url: Optional[str] = None
 
