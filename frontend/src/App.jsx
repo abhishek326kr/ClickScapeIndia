@@ -30,11 +30,7 @@ export default function App() {
   const isAuthPage = location.pathname.startsWith('/auth')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [dark, setDark] = useState(false)
-  const sidebarWidth = 260
-
-  const contentStyle = useMemo(() => (
-    isAuthPage ? {} : { marginLeft: sidebarWidth }
-  ), [isAuthPage])
+  const sidebarWidth = 260 // used by Sidebar, content uses responsive margin via Tailwind
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
@@ -47,7 +43,7 @@ export default function App() {
         {!isAuthPage && (
           <Sidebar width={sidebarWidth} open={sidebarOpen} onClose={() => setSidebarOpen(false)} onOpen={() => setSidebarOpen(true)} />
         )}
-        <main className="min-h-screen" style={contentStyle}>
+        <main className={`min-h-screen ${!isAuthPage ? 'md:ml-[260px]' : ''}`}>
           {!isAuthPage && (
             <div className="sticky top-0 z-30 bg-white/70 dark:bg-gray-950/70 backdrop-blur border-b border-gray-200 dark:border-gray-800 flex items-center gap-3 justify-between px-4 py-3">
               <button onClick={() => setSidebarOpen(true)} className="md:hidden px-3 py-2 rounded border dark:border-gray-700">Menu</button>

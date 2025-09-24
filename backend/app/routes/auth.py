@@ -5,7 +5,7 @@ from typing import Dict
 import os
 import jwt
 from ..database import get_db
-from ..schemas.auth import SignUpRequest, LoginRequest, AuthResponse, ChangePasswordRequest, MeResponse
+from ..schemas.auth import SignUpRequest, LoginRequest, AuthResponse, ChangePasswordRequest, MeResponse, ForgotPasswordRequest, ResetPasswordRequest
 from ..services.auth_service import AuthService
 from ..models.user import User
 
@@ -49,11 +49,15 @@ def get_current_user(
 @router.post("/signup", response_model=AuthResponse)
 def signup(payload: SignUpRequest, response: Response, db: Session = Depends(get_db)):
     service = AuthService(db)
-    res = service.signup(payload)
-    # Also set cookies for cookie-based sessions
-    access, refresh = service.create_token_pair(subject=payload.email)
-    _set_auth_cookies(response, access, refresh)
-    return res
+    try:
+        res = service.signup(payload)
+        # Also set cookies for cookie-based sessions
+        access, refresh = service.create_token_pair(subject=payload.email)
+        _set_auth_cookies(response, access, refresh)
+        return res
+    except ValueError as e:
+        # User already exists
+        raise HTTPException(status_code=409, detail=str(e))
 
 @router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)):
@@ -104,9 +108,8 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
 
 @router.post("/logout")
 def logout(response: Response):
-    # Clear cookies
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
+    # Clear cookies with matching attributes
+    _delete_auth_cookies(response)
     return {"status": "logged_out"}
 
 
@@ -122,14 +125,38 @@ def change_password(payload: ChangePasswordRequest, db: Session = Depends(get_db
     return {"status": "password_changed"}
 
 
+@router.post("/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    service = AuthService(db)
+    token = service.create_reset_token(payload.email)
+    # In production, you would send email with the token link.
+    # For development, optionally return the token to make testing easy.
+    if os.getenv("ENV", "development").lower() in {"dev", "development", "local"} and token:
+        return {"status": "ok", "token": token, "message": "Use this token to reset your password (dev only)"}
+    return {"status": "ok", "message": "If this email exists, a reset link has been sent."}
+
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    service = AuthService(db)
+    try:
+        service.reset_password(payload.token, payload.new_password)
+        return {"status": "password_reset"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 def _set_auth_cookies(response: Response, access: str, refresh: str):
     # HttpOnly cookies for security.
     # For production HTTPS and cross-site (frontend on app.* calling api.*), use SameSite=None and Secure.
     # You can override cookie domain via env COOKIE_DOMAIN (e.g. .clickscapeindia.com)
     env = os.getenv("ENV", "production").lower()
     cookie_domain = os.getenv("COOKIE_DOMAIN", None)
-    is_https = os.getenv("COOKIE_SECURE", "true").lower() in {"1", "true", "yes"}
-    # Default to None for dev, "none" for production
+    # In development/local, default to insecure cookies so localhost over http works
+    is_dev = env in {"dev", "development", "local"}
+    default_secure = "false" if is_dev else "true"
+    is_https = os.getenv("COOKIE_SECURE", default_secure).lower() in {"1", "true", "yes"}
+    # Default to None for dev, "none" for production (and when secure cookies are used)
     samesite = os.getenv("COOKIE_SAMESITE", "none" if is_https else "lax").lower()
     if samesite not in {"lax", "strict", "none"}:
         samesite = "none" if is_https else "lax"
@@ -151,4 +178,46 @@ def _set_auth_cookies(response: Response, access: str, refresh: str):
         secure=is_https,
         path="/",
         domain=cookie_domain if cookie_domain else None,
+    )
+
+
+@router.get("/debug-cookies")
+def debug_cookies():
+    # Dev-only diagnostics for cookie attrs to debug 401 issues
+    env = os.getenv("ENV", "production").lower()
+    if env not in {"dev", "development", "local"}:
+        # Hide this in non-dev
+        raise HTTPException(status_code=404, detail="Not found")
+    cookie_domain = os.getenv("COOKIE_DOMAIN", None)
+    default_secure = "false" if env in {"dev", "development", "local"} else "true"
+    is_https = os.getenv("COOKIE_SECURE", default_secure).lower() in {"1", "true", "yes"}
+    samesite = os.getenv("COOKIE_SAMESITE", "none" if is_https else "lax").lower()
+    return {
+        "env": env,
+        "cookie_domain": cookie_domain,
+        "secure": is_https,
+        "samesite": samesite,
+        "notes": "Match frontend and backend hosts (both 127.0.0.1 or both localhost). In dev, use COOKIE_SECURE=false."
+    }
+
+def _delete_auth_cookies(response: Response):
+    env = os.getenv("ENV", "production").lower()
+    cookie_domain = os.getenv("COOKIE_DOMAIN", None)
+    is_dev = env in {"dev", "development", "local"}
+    default_secure = "false" if is_dev else "true"
+    is_https = os.getenv("COOKIE_SECURE", default_secure).lower() in {"1", "true", "yes"}
+    samesite = os.getenv("COOKIE_SAMESITE", "none" if is_https else "lax").lower()
+    if samesite not in {"lax", "strict", "none"}:
+        samesite = "none" if is_https else "lax"
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        domain=cookie_domain if cookie_domain else None,
+        samesite=samesite,
+    )
+    response.delete_cookie(
+        key="refresh_token",
+        path="/",
+        domain=cookie_domain if cookie_domain else None,
+        samesite=samesite,
     )

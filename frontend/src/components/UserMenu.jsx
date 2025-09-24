@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api, { API_BASE } from '../lib/api.js'
+import api, { API_BASE, logoutClientSide } from '../lib/api.js'
 
 export default function UserMenu() {
   const [open, setOpen] = useState(false)
@@ -38,9 +38,7 @@ export default function UserMenu() {
   const initials = email ? email[0]?.toUpperCase() : 'U'
 
   const logout = async () => {
-    try { await api.post('/auth/logout') } catch {}
-    window.dispatchEvent(new Event('auth:changed'))
-    navigate('/auth')
+    await logoutClientSide()
   }
 
   return (

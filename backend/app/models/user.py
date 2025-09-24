@@ -12,3 +12,6 @@ class User(Base):
     plan = Column(String, default="free")
     # storage_used: total bytes used by this user (premium only enforced)
     storage_used = Column(Integer, default=0)
+    # Password reset support
+    reset_token = Column(String, default="")
+    reset_expires = Column(Integer, default=0)  # epoch seconds

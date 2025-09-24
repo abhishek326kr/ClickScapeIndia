@@ -27,3 +27,12 @@ class MeResponse(BaseModel):
     email: EmailStr
     role: str
     plan: Literal["free", "premium"] = "free"
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=6)

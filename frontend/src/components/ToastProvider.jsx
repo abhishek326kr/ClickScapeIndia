@@ -25,6 +25,16 @@ export function ToastProvider({ children }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // Allow global toasts from anywhere (e.g., axios interceptors)
+  useEffect(() => {
+    const onToast = (e) => {
+      const d = e?.detail || {}
+      push({ type: d.type || 'error', message: d.message || '', timeout: d.timeout ?? 2500 })
+    }
+    window.addEventListener('toast', onToast)
+    return () => window.removeEventListener('toast', onToast)
+  }, [push])
+
   return (
     <ToastCtx.Provider value={value}>
       {children}

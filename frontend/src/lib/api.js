@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.clickscapeindia.com'
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -16,6 +16,23 @@ function processQueue(error, token = null) {
     else prom.resolve(token)
   })
   pendingQueue = []
+}
+
+// Helper to dispatch a global toast event
+function toast(detail) {
+  try {
+    window.dispatchEvent(new CustomEvent('toast', { detail }))
+  } catch {}
+}
+
+// Exportable logout utility to ensure consistent behavior across app
+export async function logoutClientSide() {
+  try { await api.post('/auth/logout') } catch {}
+  try { toast({ type: 'success', message: 'Logged out' }) } catch {}
+  try { window.dispatchEvent(new Event('auth:changed')) } catch {}
+  if (typeof window !== 'undefined') {
+    window.location.href = '/auth'
+  }
 }
 
 api.interceptors.response.use(
@@ -36,20 +53,19 @@ api.interceptors.response.use(
         return api(original)
       } catch (e) {
         processQueue(e)
-        // best-effort logout
-        try { await api.post('/auth/logout') } catch (_) {}
-        // redirect to login if available
-        if (typeof window !== 'undefined') {
-          window.localStorage.removeItem('token')
-          if (!window.location.pathname.startsWith('/auth')) {
-            window.location.href = '/auth'
-          }
-        }
+        toast({ type: 'error', message: 'Session expired. Please sign in again.' })
+        await logoutClientSide()
         return Promise.reject(e)
       } finally {
         isRefreshing = false
       }
     }
+    // Non-401 errors: show precise message if available
+    const d = error?.response?.data
+    let message = 'Request error'
+    if (typeof d === 'string') message = d
+    else if (d?.detail) message = typeof d.detail === 'string' ? d.detail : JSON.stringify(d.detail)
+    toast({ type: 'error', message })
     return Promise.reject(error)
   }
 )
