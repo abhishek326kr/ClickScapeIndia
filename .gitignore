@@ -16,10 +16,10 @@ Desktop.ini
 # ------------------------------
 # Environment and secrets
 # ------------------------------
-.env
-.env.*
-*.env
-*.env.*
+# .env
+# .env.*
+# *.env
+# *.env.*
 # If you purposefully track sample env files, rename to .env.example and keep that tracked
 
 # ------------------------------
