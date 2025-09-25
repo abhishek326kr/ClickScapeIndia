@@ -35,3 +35,44 @@ def get_storage_quota_bytes(plan: str) -> int:
         return PREMIUM_STORAGE_QUOTA_MB * 1024 * 1024
     # Free: No persistent storage per spec
     return 0
+
+
+def get_entitlements(plan: str) -> dict:
+    allowed_exts, max_bytes, upload_limit = get_upload_rules(plan)
+    formats = sorted({e.lstrip('.') for e in allowed_exts})
+    if plan == "premium":
+        return {
+            "plan": "premium",
+            "upload_limit": upload_limit,
+            "max_file_mb": max_bytes // (1024 * 1024),
+            "formats": formats,
+            "basic_edits": True,
+            "filters_basic": True,
+            "filters_pro": True,
+            "background_remove": True,
+            "ai_enhancer": True,
+            "watermark_remove": True,
+            "export_quality": "high",
+            "ads": False,
+            "save_to_profile": True,
+            "marketplace_sell": True,
+            "premium_badge": True,
+        }
+    else:
+        return {
+            "plan": "free",
+            "upload_limit": upload_limit,
+            "max_file_mb": max_bytes // (1024 * 1024),
+            "formats": formats,
+            "basic_edits": True,
+            "filters_basic": True,  # limited client-side list
+            "filters_pro": False,
+            "background_remove": False,
+            "ai_enhancer": False,
+            "watermark_remove": False,
+            "export_quality": "web",
+            "ads": True,
+            "save_to_profile": False,
+            "marketplace_sell": False,
+            "premium_badge": False,
+        }

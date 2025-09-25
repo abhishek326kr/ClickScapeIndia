@@ -174,7 +174,8 @@ class PhotoService:
             processed_url=processed_url,
             original_url=original_url,
             bytes_size=(orig_size if plan == "premium" else 0),
-            user_id=(user.id if user else None),
+            # Save-to-profile/gallery is Premium-only per plan matrix
+            user_id=(user.id if (user and plan == "premium") else None),
         )
         self.db.add(photo)
         # Update storage usage for premium

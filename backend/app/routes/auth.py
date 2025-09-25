@@ -40,6 +40,10 @@ def get_current_user(
         user = db.query(User).filter(User.email == email).first()
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
+        # Server-side token invalidation check
+        token_ver = int(payload.get("ver", 0))
+        if int(getattr(user, "token_version", 0)) != token_ver:
+            raise HTTPException(status_code=401, detail="Token revoked")
         return user
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
@@ -95,9 +99,16 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=400, detail="Not a refresh token")
         subject = payload.get("sub")
+        # Check server-side invalidation via token_version
+        user = db.query(User).filter(User.email == subject).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        token_ver = int(payload.get("ver", 0))
+        if int(getattr(user, "token_version", 0)) != token_ver:
+            raise HTTPException(status_code=401, detail="Refresh token revoked")
         service = AuthService(db)
-        access = service._create_access_token(subject)
-        refresh = service._create_refresh_token(subject)
+        access = service._create_access_token(subject, ver=int(user.token_version or 0))
+        refresh = service._create_refresh_token(subject, ver=int(user.token_version or 0))
         _set_auth_cookies(response, access, refresh)
         return AuthResponse(access_token=access)
     except jwt.ExpiredSignatureError:
@@ -107,8 +118,11 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
 
 
 @router.post("/logout")
-def logout(response: Response):
-    # Clear cookies with matching attributes
+def logout(response: Response, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # Bump token_version to revoke all existing tokens, then clear cookies
+    user.token_version = int(getattr(user, "token_version", 0)) + 1
+    db.add(user)
+    db.commit()
     _delete_auth_cookies(response)
     return {"status": "logged_out"}
 
@@ -121,6 +135,8 @@ def change_password(payload: ChangePasswordRequest, db: Session = Depends(get_db
     if not db_user or not service._verify_password(payload.current_password, db_user.password_hash):
         raise HTTPException(status_code=400, detail="Current password incorrect")
     db_user.password_hash = service._hash_password(payload.new_password)
+    # Invalidate all tokens after password change
+    db_user.token_version = int(getattr(db_user, "token_version", 0)) + 1
     db.commit()
     return {"status": "password_changed"}
 

@@ -15,3 +15,5 @@ class User(Base):
     # Password reset support
     reset_token = Column(String, default="")
     reset_expires = Column(Integer, default=0)  # epoch seconds
+    # Server-side token invalidation: bump this to invalidate all existing JWTs
+    token_version = Column(Integer, default=0)

@@ -91,6 +91,7 @@ _ensure_sqlite_column("users", "plan", "plan VARCHAR(32) DEFAULT 'free'")
 _ensure_sqlite_column("users", "storage_used", "storage_used INTEGER DEFAULT 0")
 _ensure_sqlite_column("users", "reset_token", "reset_token VARCHAR(256) DEFAULT ''")
 _ensure_sqlite_column("users", "reset_expires", "reset_expires INTEGER DEFAULT 0")
+_ensure_sqlite_column("users", "token_version", "token_version INTEGER DEFAULT 0")
 
 # Add new photo storage/export columns in dev
 _ensure_sqlite_column("photos", "processed_url", "processed_url VARCHAR(1024)")

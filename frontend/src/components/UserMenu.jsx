@@ -7,6 +7,7 @@ export default function UserMenu() {
   const [email, setEmail] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [plan, setPlan] = useState('free')
+  const [entitlements, setEntitlements] = useState(null)
   const ref = useRef(null)
   const navigate = useNavigate()
 
@@ -21,6 +22,10 @@ export default function UserMenu() {
           const p = await api.get('/users/me/profile')
           const url = p?.data?.avatar_url || ''
           setAvatarUrl(url ? `${url}?v=${Date.now()}` : '')
+        } catch {}
+        try {
+          const ent = await api.get('/users/me/entitlements')
+          setEntitlements(ent?.data || null)
         } catch {}
       } catch {}
     }
@@ -39,6 +44,20 @@ export default function UserMenu() {
 
   const logout = async () => {
     await logoutClientSide()
+  }
+
+  const upgradeToPremium = async () => {
+    try {
+      await api.post('/users/me/plan', { plan: 'premium' })
+      const me = await api.get('/auth/me')
+      setPlan(me?.data?.plan || 'premium')
+      const ent = await api.get('/users/me/entitlements')
+      setEntitlements(ent?.data || null)
+      try { window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Upgraded to Premium' } })) } catch {}
+      setOpen(false)
+    } catch (e) {
+      try { window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Upgrade failed' } })) } catch {}
+    }
   }
 
   return (
@@ -60,9 +79,16 @@ export default function UserMenu() {
                 {plan === 'premium' ? 'Premium' : 'Free'}
               </span>
               {plan !== 'premium' && (
-                <button className="text-xs text-amber-700 hover:underline" onClick={() => { setOpen(false); navigate('/profile#upgrade') }}>Upgrade</button>
+                <button className="text-xs text-amber-700 hover:underline" onClick={upgradeToPremium}>Upgrade</button>
               )}
             </div>
+            {entitlements && (
+              <div className="mt-2 text-xs text-gray-500 space-y-1">
+                <div>Upload limit: {entitlements.upload_limit}</div>
+                <div>Max file: {entitlements.max_file_mb} MB</div>
+                <div>AI Tools: {entitlements.ai_enhancer ? 'Enabled' : 'Disabled'}</div>
+              </div>
+            )}
           </div>
           <div className="py-1">
             <button className="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800" onClick={() => { setOpen(false); navigate('/profile') }}>Dashboard</button>

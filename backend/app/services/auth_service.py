@@ -27,28 +27,33 @@ class AuthService:
     def _verify_password(self, raw: str, hashed: str) -> bool:
         return pwd_context.verify(raw, hashed)
 
-    def _create_access_token(self, subject: str) -> str:
+    def _create_access_token(self, subject: str, ver: int = 0) -> str:
         now = datetime.now(timezone.utc)
         payload = {
             "sub": subject,
             "iat": int(now.timestamp()),
             "exp": int((now + timedelta(minutes=self.jwt_expires_minutes)).timestamp()),
             "type": "access",
+            "ver": ver,
         }
         return jwt.encode(payload, self.secret_key, algorithm=self.jwt_algorithm)
 
-    def _create_refresh_token(self, subject: str) -> str:
+    def _create_refresh_token(self, subject: str, ver: int = 0) -> str:
         now = datetime.now(timezone.utc)
         payload = {
             "sub": subject,
             "iat": int(now.timestamp()),
             "exp": int((now + timedelta(days=self.refresh_expires_days)).timestamp()),
             "type": "refresh",
+            "ver": ver,
         }
         return jwt.encode(payload, self.secret_key, algorithm=self.jwt_algorithm)
 
     def create_token_pair(self, subject: str) -> tuple[str, str]:
-        return self._create_access_token(subject), self._create_refresh_token(subject)
+        # Ensure tokens carry current user token_version for server-side invalidation
+        user = self.db.query(User).filter(User.email == subject).first()
+        ver = int(getattr(user, "token_version", 0)) if user else 0
+        return self._create_access_token(subject, ver), self._create_refresh_token(subject, ver)
 
     def signup(self, payload: SignUpRequest) -> AuthResponse:
         existing = self.db.query(User).filter(User.email == payload.email).first()
@@ -73,7 +78,7 @@ class AuthService:
             prof.phone = payload.phone
         self.db.add(prof)
         self.db.commit()
-        token = self._create_access_token(subject=user.email)
+        token = self._create_access_token(subject=user.email, ver=int(getattr(user, "token_version", 0)))
         return AuthResponse(access_token=token)
 
     def login(self, payload: LoginRequest) -> AuthResponse:
@@ -81,7 +86,7 @@ class AuthService:
         if not user or not self._verify_password(payload.password, user.password_hash):
             # In production, avoid leaking which field is incorrect
             raise ValueError("Invalid credentials")
-        token = self._create_access_token(subject=user.email)
+        token = self._create_access_token(subject=user.email, ver=int(getattr(user, "token_version", 0)))
         return AuthResponse(access_token=token)
 
     # Password reset flow

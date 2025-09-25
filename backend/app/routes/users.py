@@ -4,6 +4,8 @@ from ..database import get_db
 from .auth import get_current_user
 from ..models.profile import Profile
 from ..schemas.profile import ProfileIn, ProfileOut
+from ..schemas.users import PlanChangeRequest, EntitlementsOut
+from ..services.plan_service import get_plan, get_entitlements
 import os
 import uuid
 
@@ -18,6 +20,27 @@ def get_my_profile(db: Session = Depends(get_db), user=Depends(get_current_user)
         db.commit()
         db.refresh(prof)
     return prof
+
+
+@router.post("/me/plan")
+def change_plan(payload: PlanChangeRequest, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    # Basic server-side validation; in real life you'd integrate payments/webhooks
+    plan = payload.plan
+    if plan not in {"free", "premium"}:
+        plan = "free"
+    # No-op if same
+    if getattr(user, "plan", "free") == plan:
+        return {"status": "ok", "plan": plan}
+    user.plan = plan
+    db.add(user)
+    db.commit()
+    return {"status": "ok", "plan": plan}
+
+
+@router.get("/me/entitlements", response_model=EntitlementsOut)
+def my_entitlements(user=Depends(get_current_user)):
+    plan = get_plan(user)
+    return EntitlementsOut(**get_entitlements(plan))
 
 
 @router.put("/me/profile", response_model=ProfileOut)
