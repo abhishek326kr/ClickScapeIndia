@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import api from '../lib/api.js'
 import { useToast } from '../components/ToastProvider.jsx'
 
@@ -14,6 +14,7 @@ export default function Auth() {
   const [status, setStatus] = useState(null)
   const navigate = useNavigate()
   const toast = useToast()
+  const { search } = useLocation()
 
   const errMsg = (err) => {
     const d = err?.response?.data
@@ -31,6 +32,15 @@ export default function Auth() {
       .then(() => navigate('/profile', { replace: true }))
       .catch(() => {})
   }, [navigate])
+
+  // Read initial mode from query string (?mode=register|login|forgot)
+  useEffect(() => {
+    const q = new URLSearchParams(search)
+    const m = q.get('mode')
+    if (m && ['login', 'register', 'forgot'].includes(m)) {
+      setMode(m)
+    }
+  }, [search])
 
   const submit = async (e) => {
     e.preventDefault()

@@ -13,6 +13,7 @@ import { ToastProvider } from './components/ToastProvider.jsx'
 import UserMenu from './components/UserMenu.jsx'
 import MyVotes from './pages/MyVotes.jsx'
 import PlanProvider, { usePlan } from './components/PlanProvider.jsx'
+import Landing from './pages/Landing.jsx'
 
 function AdsBar() {
   const { plan } = usePlan()
@@ -28,6 +29,7 @@ function AdsBar() {
 export default function App() {
   const location = useLocation()
   const isAuthPage = location.pathname.startsWith('/auth')
+  const isPublicPage = location.pathname === '/' || isAuthPage
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [dark, setDark] = useState(false)
   const sidebarWidth = 260 // used by Sidebar, content uses responsive margin via Tailwind
@@ -40,11 +42,11 @@ export default function App() {
     <ToastProvider>
       <PlanProvider>
       <div className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-        {!isAuthPage && (
+        {!isPublicPage && (
           <Sidebar width={sidebarWidth} open={sidebarOpen} onClose={() => setSidebarOpen(false)} onOpen={() => setSidebarOpen(true)} />
         )}
-        <main className={`min-h-screen ${!isAuthPage ? 'md:ml-[260px]' : ''}`}>
-          {!isAuthPage && (
+        <main className={`min-h-screen ${!isPublicPage ? 'md:ml-[260px]' : ''}`}>
+          {!isPublicPage && (
             <div className="sticky top-0 z-30 bg-white/70 dark:bg-gray-950/70 backdrop-blur border-b border-gray-200 dark:border-gray-800 flex items-center gap-3 justify-between px-4 py-3">
               <button onClick={() => setSidebarOpen(true)} className="md:hidden px-3 py-2 rounded border dark:border-gray-700">Menu</button>
               <div className="flex-1 max-w-2xl">
@@ -66,7 +68,7 @@ export default function App() {
           )}
           <div className="flex-1">
             <Routes>
-              <Route path="/" element={<Navigate to="/auth" replace />} />
+              <Route path="/" element={<Landing />} />
               <Route path="/home" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/competition" element={<ProtectedRoute><Competition /></ProtectedRoute>} />
               <Route path="/gallery" element={<ProtectedRoute><Gallery /></ProtectedRoute>} />
@@ -77,8 +79,8 @@ export default function App() {
               <Route path="*" element={<Navigate to="/auth" replace />} />
             </Routes>
           </div>
-          {!isAuthPage && <Footer />}
-          {!isAuthPage && <AdsBar />}
+          {!isPublicPage && <Footer />}
+          {!isPublicPage && <AdsBar />}
         </main>
       </div>
       </PlanProvider>
