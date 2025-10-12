@@ -29,7 +29,7 @@ export default function Auth() {
   useEffect(() => {
     // If already authenticated (cookie), go to dashboard
     api.get('/auth/me')
-      .then(() => navigate('/profile', { replace: true }))
+      .then(() => navigate('/home', { replace: true }))
       .catch(() => {})
   }, [navigate])
 
@@ -50,13 +50,13 @@ export default function Auth() {
         setStatus('Logged in')
         toast.push({ type: 'success', message: 'Welcome back!' })
         window.dispatchEvent(new Event('auth:changed'))
-        navigate('/profile')
+        navigate('/home', { replace: true })
       } else if (mode === 'register') {
         await api.post('/auth/signup', { email, password, role, name, phone, plan })
         setStatus('Signed up')
         toast.push({ type: 'success', message: 'Account created' })
         window.dispatchEvent(new Event('auth:changed'))
-        navigate('/profile')
+        navigate('/home', { replace: true })
       } else if (mode === 'forgot') {
         const res = await api.post('/auth/forgot-password', { email })
         const msg = res?.data?.message || 'If the email exists, reset link has been sent.'

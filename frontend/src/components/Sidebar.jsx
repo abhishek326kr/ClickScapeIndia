@@ -52,7 +52,7 @@ export default function Sidebar({ width = 260, open, onClose, onOpen }) {
         </div>
         <nav className="p-3 space-y-1">
           <div className="text-xs uppercase tracking-wider text-gray-500 px-3 py-2">Navigation</div>
-          <NavLink to="/home" className={linkClass} onClick={onClose}>
+          <NavLink to="/dashboard" className={linkClass} onClick={onClose}>
             <span className="absolute left-0 top-0 bottom-0 w-1 rounded-r bg-teal-500 opacity-0 group-[.active]:opacity-100" />
             <span className="inline-flex items-center gap-3">
               <HomeIcon />

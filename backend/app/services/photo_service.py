@@ -145,6 +145,18 @@ class PhotoService:
         if orig_size > max_bytes:
             raise ValueError(f"File too large for {plan} plan. Max {max_bytes // (1024*1024)} MB")
 
+        # Enforce marketplace pricing constraints
+        import os
+        try:
+            min_price = float(os.getenv("PRICE_MIN", "50"))
+            max_price = float(os.getenv("PRICE_MAX", "50000"))
+        except Exception:
+            min_price, max_price = 50.0, 50000.0
+        if price is None:
+            price = 0.0
+        if price < min_price or price > max_price:
+            raise ValueError(f"Price must be between ₹{int(min_price)} and ₹{int(max_price)}")
+
         # Premium: enforce storage quota (persistent)
         original_url = None
         processed_url = None
@@ -164,18 +176,26 @@ class PhotoService:
             out_bytes, out_ext = self._compress_for_free(wm_bytes, wm_ext)
             _, processed_url = self._save_bytes(out_bytes, out_ext)
 
+        # Royalty percent (can be overridden per env)
+        try:
+            royalty_percent = float(os.getenv("ROYALTY_PERCENT", "0.30"))
+        except Exception:
+            royalty_percent = 0.30
+
         photo = Photo(
             title=title,
             category=category,
             tags=tags or "",
             price=price or 0.0,
+            royalty_percent=royalty_percent,
             watermark=(plan == "free"),
             url=processed_url,
             processed_url=processed_url,
             original_url=original_url,
             bytes_size=(orig_size if plan == "premium" else 0),
-            # Save-to-profile/gallery is Premium-only per plan matrix
-            user_id=(user.id if (user and plan == "premium") else None),
+            # Associate uploads with the current user for competition constraints and ownership
+            # (was previously limited to premium only)
+            user_id=(user.id if user else None),
         )
         self.db.add(photo)
         # Update storage usage for premium

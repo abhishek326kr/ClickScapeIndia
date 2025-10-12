@@ -9,6 +9,8 @@ class Photo(Base):
     category = Column(String, index=True)
     tags = Column(String, default="")
     price = Column(Float, default=0.0)
+    # Royalty percent (e.g., 0.15 = 15%) used to compute photographer earnings on purchase
+    royalty_percent = Column(Float, default=0.15)
     watermark = Column(Boolean, default=False)
     # processed_url: the watermarked/derived image (free users see this)
     url = Column(String, nullable=True)  # legacy field kept for compatibility

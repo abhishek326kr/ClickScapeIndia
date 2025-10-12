@@ -8,6 +8,7 @@ class PhotoOut(BaseModel):
     category: str
     tags: str
     price: float
+    royalty_percent: Optional[float] = 0.15
     watermark: bool
     url: Optional[str] = None
     processed_url: Optional[str] = None

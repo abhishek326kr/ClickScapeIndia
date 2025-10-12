@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import api from '../lib/api.js'
 import { useToast } from './ToastProvider.jsx'
 import { usePlan } from './PlanProvider.jsx'
@@ -10,17 +10,46 @@ export default function UploadForm() {
   const [status, setStatus] = useState(null)
   const toast = useToast()
   const [dragOver, setDragOver] = useState(false)
+  const [pricing, setPricing] = useState({ min: 0, max: 0, royalty_percent: 0, currency: 'INR' })
+  const [royaltyPreview, setRoyaltyPreview] = useState(null)
+
+  useEffect(() => {
+    // Fetch pricing configuration
+    api.get('/marketplace/pricing-config')
+      .then(res => setPricing(res.data || { min: 0, max: 0, royalty_percent: 0, currency: 'INR' }))
+      .catch(() => {})
+  }, [])
 
   const allowedExts = plan === 'premium'
     ? ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.raw', '.psd']
     : ['.jpg', '.jpeg', '.png']
   const maxMb = plan === 'premium' ? 25 : 3
 
+  // Keep a live royalty preview when price changes
+  useEffect(() => {
+    const p = parseFloat(form.price || '0')
+    if (!isNaN(p) && p > 0 && pricing.royalty_percent) {
+      // Compute locally to avoid extra network trips
+      const amt = Math.round(p * pricing.royalty_percent * 100) / 100
+      setRoyaltyPreview({ price: p, royalty_amount: amt, royalty_percent: pricing.royalty_percent, currency: pricing.currency })
+    } else {
+      setRoyaltyPreview(null)
+    }
+  }, [form.price, pricing])
+
   const onSubmit = async (e) => {
     e.preventDefault()
     if (!form.title.trim()) { toast.push({ type: 'error', message: 'Title is required' }); return }
     if (!form.category.trim()) { toast.push({ type: 'error', message: 'Category is required' }); return }
     if (!form.image) { toast.push({ type: 'error', message: 'Please choose an image' }); return }
+    // Validate price range if configured
+    const p = parseFloat(form.price || '0')
+    if (!isNaN(p) && (pricing.min || pricing.max)) {
+      if (p < pricing.min || p > pricing.max) {
+        toast.push({ type: 'error', message: `Price must be between ₹${pricing.min} and ₹${pricing.max}` })
+        return
+      }
+    }
     // client-side validation
     const name = form.image.name || ''
     const ext = name.slice(name.lastIndexOf('.')).toLowerCase()
@@ -73,6 +102,12 @@ export default function UploadForm() {
         <input type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder=" " />
         <label>Price</label>
       </div>
+      {pricing && (pricing.min > 0 || pricing.max > 0) && (
+        <div className="text-xs text-gray-500">Allowed range: ₹{pricing.min} – ₹{pricing.max}. Royalty: {Math.round((pricing.royalty_percent || 0) * 100)}%</div>
+      )}
+      {royaltyPreview && (
+        <div className="text-xs text-gray-600">Estimated royalty on ₹{royaltyPreview.price}: ₹{royaltyPreview.royalty_amount} ({Math.round(royaltyPreview.royalty_percent * 100)}%)</div>
+      )}
 
       <div
         className={`glass-card glow-border p-4 transition-colors ${dragOver ? 'border-teal-400 bg-white/20' : ''}`}

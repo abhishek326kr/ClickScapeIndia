@@ -26,16 +26,29 @@ function AdsBar() {
   )
 }
 
+// Local sun/moon icon used for the header theme toggle
+function MoonSunIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 10h2v-3h-2v3zM4.84 20.83l1.79-1.79-1.79-1.79-1.67 1.67 1.67 1.91zM20 13h3v-2h-3v2zm-2.76 7.83l1.79-1.91-1.67-1.67-1.79 1.79 1.67 1.79zM12 6a6 6 0 100 12 6 6 0 000-12zm7.24-1.16l1.79-1.79-1.41-1.41-1.79 1.79 1.41 1.41zM13 1h-2v3h2V1z"/></svg>
+  )
+}
+
 export default function App() {
   const location = useLocation()
   const isAuthPage = location.pathname.startsWith('/auth')
   const isPublicPage = location.pathname === '/' || isAuthPage
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [dark, setDark] = useState(false)
+  const [dark, setDark] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('theme') : null
+    if (saved === 'dark') return true
+    if (saved === 'light') return false
+    try { return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches } catch { return false }
+  })
   const sidebarWidth = 260 // used by Sidebar, content uses responsive margin via Tailwind
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
+    try { localStorage.setItem('theme', dark ? 'dark' : 'light') } catch {}
   }, [dark])
 
   return (
@@ -56,11 +69,9 @@ export default function App() {
                 <button
                   onClick={() => setDark((d) => !d)}
                   aria-label="Toggle dark mode"
-                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${dark ? 'bg-teal-600' : 'bg-gray-300'}`}
+                  className="p-2 rounded-full border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
-                  <span
-                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${dark ? 'translate-x-7' : 'translate-x-1'}`}
-                  />
+                  <MoonSunIcon />
                 </button>
                 <UserMenu />
               </div>
@@ -69,7 +80,9 @@ export default function App() {
           <div className="flex-1">
             <Routes>
               <Route path="/" element={<Landing />} />
-              <Route path="/home" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              {/* Backward compatibility: redirect old /home to /dashboard */}
+              <Route path="/home" element={<Navigate to="/dashboard" replace />} />
               <Route path="/competition" element={<ProtectedRoute><Competition /></ProtectedRoute>} />
               <Route path="/gallery" element={<ProtectedRoute><Gallery /></ProtectedRoute>} />
               <Route path="/marketplace" element={<ProtectedRoute><Marketplace /></ProtectedRoute>} />

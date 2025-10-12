@@ -7,6 +7,8 @@ from ..services.photo_service import PhotoService
 from .auth import get_current_user
 from ..models.user import User
 from ..services.plan_service import get_plan, get_upload_rules
+from ..models.photo import Photo
+from ..models.participation import Participation
 
 router = APIRouter()
 
@@ -23,6 +25,13 @@ async def upload_photo(
 ):
     service = PhotoService(db)
     try:
+        # Competition rule: If user has joined competition (entry_paid), limit single-upload to 1 per category per user.
+        # Additional photos should be uploaded via the batch endpoint where allowances are applied.
+        part = db.query(Participation).filter(Participation.user_id == user.id, Participation.entry_paid == True).first()  # noqa: E712
+        if part is not None:
+            existing_count = db.query(Photo).filter(Photo.user_id == user.id, Photo.category == category).count()
+            if existing_count >= 1:
+                raise HTTPException(status_code=400, detail="You already submitted your recent best click for this category. Use batch upload for additional photos.")
         return await service.upload_photo(
             title=title,
             category=category,
@@ -108,8 +117,24 @@ async def upload_batch(
 ):
     plan = get_plan(user)
     _allowed, _max_bytes, upload_limit = get_upload_rules(plan)
-    if len(images) > upload_limit:
-        raise HTTPException(status_code=400, detail=f"{plan.capitalize()} plan allows up to {upload_limit} images per batch. Upgrade for more.")
+
+    # Competition allowances override plan upload_limit when participating
+    part = db.query(Participation).filter(Participation.user_id == user.id, Participation.entry_paid == True).first()  # noqa: E712
+    if part is not None:
+        if part.plan == "creator_plus":
+            comp_limit = 25  # 20–25 additional allowed; enforce max 25
+        else:
+            # Enthusiast: allow the number of add-on slots as additional uploads in batch
+            comp_limit = max(0, int(part.addon_slots or 0))
+        if len(images) > comp_limit:
+            if part.plan == "creator_plus":
+                raise HTTPException(status_code=400, detail="Creator+ allows up to 25 additional photos per batch.")
+            else:
+                raise HTTPException(status_code=400, detail=f"Your add-on slots allow up to {comp_limit} additional photos in one batch.")
+    else:
+        # Not participating: fall back to plan upload_limit
+        if len(images) > upload_limit:
+            raise HTTPException(status_code=400, detail=f"{plan.capitalize()} plan allows up to {upload_limit} images per batch. Upgrade or join competition for more.")
     service = PhotoService(db)
     results: List[PhotoOut] = []
     for img in images:

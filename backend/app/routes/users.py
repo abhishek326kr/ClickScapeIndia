@@ -8,6 +8,8 @@ from ..schemas.users import PlanChangeRequest, EntitlementsOut
 from ..services.plan_service import get_plan, get_entitlements
 import os
 import uuid
+from ..models.questionnaire import Questionnaire
+from ..schemas.questionnaire import QuestionnaireIn, QuestionnaireOut
 
 router = APIRouter()
 
@@ -20,6 +22,32 @@ def get_my_profile(db: Session = Depends(get_db), user=Depends(get_current_user)
         db.commit()
         db.refresh(prof)
     return prof
+
+
+# Questionnaire endpoints
+@router.get("/me/questionnaire", response_model=QuestionnaireOut)
+def get_my_questionnaire(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    q = db.query(Questionnaire).filter(Questionnaire.user_id == user.id).first()
+    if not q:
+        q = Questionnaire(user_id=user.id)
+        db.add(q)
+        db.commit()
+        db.refresh(q)
+    return QuestionnaireOut.from_orm(q)
+
+
+@router.put("/me/questionnaire", response_model=QuestionnaireOut)
+def update_my_questionnaire(payload: QuestionnaireIn, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    q = db.query(Questionnaire).filter(Questionnaire.user_id == user.id).first()
+    if not q:
+        q = Questionnaire(user_id=user.id)
+        db.add(q)
+        db.flush()
+    for field, value in payload.model_dump(exclude_none=True).items():
+        setattr(q, field, value)
+    db.commit()
+    db.refresh(q)
+    return QuestionnaireOut.from_orm(q)
 
 
 @router.post("/me/plan")

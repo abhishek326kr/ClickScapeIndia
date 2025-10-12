@@ -60,11 +60,62 @@ api.interceptors.response.use(
         isRefreshing = false
       }
     }
-    // Non-401 errors: show precise message if available
-    const d = error?.response?.data
-    let message = 'Request error'
-    if (typeof d === 'string') message = d
-    else if (d?.detail) message = typeof d.detail === 'string' ? d.detail : JSON.stringify(d.detail)
+    // Non-401 errors: extract a precise, human-friendly message
+    const { response } = error || {}
+    let message = ''
+
+    // Network / CORS / DNS
+    if (!response) {
+      if (error?.code === 'ERR_NETWORK') {
+        message = 'Network error: unable to reach server. Check your connection or CORS.'
+      } else if (error?.message) {
+        message = error.message
+      } else {
+        message = 'Network error occurred'
+      }
+      toast({ type: 'error', message })
+      return Promise.reject(error)
+    }
+
+    const status = response.status
+    const data = response.data
+
+    // FastAPI common shapes
+    if (typeof data === 'string') {
+      message = data
+    } else if (data?.detail) {
+      // detail can be string or list of validation errors
+      if (typeof data.detail === 'string') {
+        message = data.detail
+      } else if (Array.isArray(data.detail)) {
+        // Collect validation messages e.g. [{loc: [...], msg: '...', type: 'value_error'}]
+        const parts = data.detail.map((d) => {
+          const loc = Array.isArray(d?.loc) ? d.loc.join('.') : ''
+          const msg = d?.msg || JSON.stringify(d)
+          return loc ? `${loc}: ${msg}` : msg
+        })
+        message = parts.join('; ')
+      } else {
+        message = JSON.stringify(data.detail)
+      }
+    } else if (data?.message) {
+      message = data.message
+    } else if (data?.error) {
+      message = typeof data.error === 'string' ? data.error : JSON.stringify(data.error)
+    } else {
+      message = `Request failed with status ${status}`
+    }
+
+    // Add method + path context (without query string) for clarity
+    try {
+      const url = new URL(original?.url || original?.baseURL || '', API_BASE)
+      const path = original?.url?.startsWith('http') ? new URL(original.url).pathname : url.pathname
+      const method = (original?.method || 'GET').toUpperCase()
+      message = `${method} ${path}: ${message}`
+    } catch {
+      // ignore URL parsing issues
+    }
+
     toast({ type: 'error', message })
     return Promise.reject(error)
   }

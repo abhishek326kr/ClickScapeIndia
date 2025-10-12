@@ -97,3 +97,4 @@ _ensure_sqlite_column("users", "token_version", "token_version INTEGER DEFAULT 0
 _ensure_sqlite_column("photos", "processed_url", "processed_url VARCHAR(1024)")
 _ensure_sqlite_column("photos", "original_url", "original_url VARCHAR(1024)")
 _ensure_sqlite_column("photos", "bytes_size", "bytes_size INTEGER DEFAULT 0")
+_ensure_sqlite_column("photos", "royalty_percent", "royalty_percent FLOAT DEFAULT 0.15")
