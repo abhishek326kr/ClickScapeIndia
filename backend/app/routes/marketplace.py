@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
 from .auth import get_current_user
 from ..models.user import User
 from ..services.plan_service import get_plan
+from ..services.photo_service import PhotoService
+from ..schemas.photos import PhotoOut
 import os
 
 router = APIRouter()
@@ -31,6 +33,45 @@ def _pricing_config():
         "royalty_percent": royalty_percent,
         "currency": "INR",
     }
+
+# Public: list marketplace items
+@router.get("/list", response_model=list[PhotoOut])
+def list_marketplace(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100), db: Session = Depends(get_db)):
+    svc = PhotoService(db)
+    return svc.list_marketplace(page=page, size=size)
+
+
+# Public: get single public item
+@router.get("/item/{photo_id}", response_model=PhotoOut)
+def get_marketplace_item(photo_id: int, db: Session = Depends(get_db)):
+    svc = PhotoService(db)
+    p = svc.get_photo(photo_id)
+    if not p or not (p.for_sale and p.is_public):
+        raise HTTPException(status_code=404, detail="Not found")
+    return PhotoOut.from_orm(p)
+
+
+# Auth: publish/unpublish
+@router.post("/publish/{photo_id}", response_model=PhotoOut)
+def publish(photo_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    svc = PhotoService(db)
+    try:
+        return svc.publish(photo_id, user)
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Not found")
+
+
+@router.post("/unpublish/{photo_id}", response_model=PhotoOut)
+def unpublish(photo_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    svc = PhotoService(db)
+    try:
+        return svc.unpublish(photo_id, user)
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Not found")
 
 
 @router.get("/pricing-config")

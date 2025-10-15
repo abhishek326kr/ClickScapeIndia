@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard.jsx'
 import Competition from './pages/Competition.jsx'
 import Gallery from './pages/Gallery.jsx'
 import Marketplace from './pages/Marketplace.jsx'
+import MarketplaceItem from './pages/MarketplaceItem.jsx'
 import Profile from './pages/Profile.jsx'
 import Auth from './pages/Auth.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
@@ -36,7 +37,7 @@ function MoonSunIcon() {
 export default function App() {
   const location = useLocation()
   const isAuthPage = location.pathname.startsWith('/auth')
-  const isPublicPage = location.pathname === '/' || isAuthPage
+  const isPublicPage = location.pathname === '/' || isAuthPage || location.pathname.startsWith('/marketplace')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [dark, setDark] = useState(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('theme') : null
@@ -85,7 +86,9 @@ export default function App() {
               <Route path="/home" element={<Navigate to="/dashboard" replace />} />
               <Route path="/competition" element={<ProtectedRoute><Competition /></ProtectedRoute>} />
               <Route path="/gallery" element={<ProtectedRoute><Gallery /></ProtectedRoute>} />
-              <Route path="/marketplace" element={<ProtectedRoute><Marketplace /></ProtectedRoute>} />
+              {/* Marketplace is public for browsing */}
+              <Route path="/marketplace" element={<Marketplace />} />
+              <Route path="/marketplace/item/:id" element={<MarketplaceItem />} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/my-votes" element={<ProtectedRoute><MyVotes /></ProtectedRoute>} />
               <Route path="/auth" element={<Auth />} />

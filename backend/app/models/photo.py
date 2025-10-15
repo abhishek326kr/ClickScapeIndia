@@ -12,6 +12,9 @@ class Photo(Base):
     # Royalty percent (e.g., 0.15 = 15%) used to compute photographer earnings on purchase
     royalty_percent = Column(Float, default=0.15)
     watermark = Column(Boolean, default=False)
+    # Marketplace flags
+    for_sale = Column(Boolean, default=False)
+    is_public = Column(Boolean, default=True)
     # processed_url: the watermarked/derived image (free users see this)
     url = Column(String, nullable=True)  # legacy field kept for compatibility
     processed_url = Column(String, nullable=True)

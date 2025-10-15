@@ -6,7 +6,7 @@ import { usePlan } from './PlanProvider.jsx'
 export default function UploadForm() {
   const { plan } = usePlan()
   // Keep price as a string to avoid React NaN warnings when the field is cleared
-  const [form, setForm] = useState({ title: '', category: '', tags: '', price: '', image: null })
+  const [form, setForm] = useState({ title: '', category: '', tags: '', price: '', image: null, for_sale: false, is_public: true })
   const [status, setStatus] = useState(null)
   const toast = useToast()
   const [dragOver, setDragOver] = useState(false)
@@ -68,6 +68,8 @@ export default function UploadForm() {
       } else if (k === 'price') {
         const numeric = v === '' ? '0' : String(v)
         data.append('price', numeric)
+      } else if (k === 'for_sale' || k === 'is_public') {
+        data.append(k, v ? 'true' : 'false')
       } else {
         data.append(k, v)
       }
@@ -76,7 +78,7 @@ export default function UploadForm() {
       const res = await api.post('/photos/upload', data, { headers: { 'Content-Type': 'multipart/form-data' } })
       setStatus(`Uploaded: ${res.data.title}`)
       toast.push({ type: 'success', message: `Uploaded: ${res.data.title}` })
-      setForm({ title: '', category: '', tags: '', price: '', image: null })
+      setForm({ title: '', category: '', tags: '', price: '', image: null, for_sale: false, is_public: true })
     } catch (e) {
       const msg = e?.response?.data?.detail || 'Upload failed'
       setStatus(msg)
@@ -101,6 +103,16 @@ export default function UploadForm() {
       <div className="field">
         <input type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder=" " />
         <label>Price</label>
+      </div>
+      <div className="flex items-center gap-4">
+        <label className="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={form.for_sale} onChange={e => setForm({ ...form, for_sale: e.target.checked })} />
+          List for sale
+        </label>
+        <label className="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={form.is_public} onChange={e => setForm({ ...form, is_public: e.target.checked })} />
+          Publicly visible
+        </label>
       </div>
       {pricing && (pricing.min > 0 || pricing.max > 0) && (
         <div className="text-xs text-gray-500">Allowed range: ₹{pricing.min} – ₹{pricing.max}. Royalty: {Math.round((pricing.royalty_percent || 0) * 100)}%</div>

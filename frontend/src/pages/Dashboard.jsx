@@ -6,6 +6,7 @@ import { useToast } from '../components/ToastProvider.jsx'
 
 export default function Dashboard() {
   const [photos, setPhotos] = useState([])
+  const [myPhotos, setMyPhotos] = useState([])
   const [active, setActive] = useState(null)
   const [summary, setSummary] = useState({ participants: 0, votes_received: 0, my_uploads: 0 })
   const [loading, setLoading] = useState(true)
@@ -14,12 +15,14 @@ export default function Dashboard() {
   useEffect(() => {
     const run = async () => {
       try {
-        const [ph, sm] = await Promise.all([
+        const [ph, sm, mine] = await Promise.all([
           api.get('/photos'),
           api.get('/dashboard/summary').catch(() => ({ data: summary })),
+          api.get('/photos/my').catch(() => ({ data: [] })),
         ])
         setPhotos(ph.data || [])
         setSummary(sm.data || summary)
+        setMyPhotos(mine.data || [])
       } finally {
         setLoading(false)
       }
@@ -106,6 +109,41 @@ export default function Dashboard() {
       )}
 
       <ImageModal src={active?.url ? `${API_BASE}${active.url}` : null} title={active?.title} onClose={() => setActive(null)} />
+
+      {/* My Marketplace section */}
+      <div className="mt-10">
+        <h2 className="text-xl font-semibold mb-3">My Marketplace</h2>
+        {myPhotos.length ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {myPhotos.map(p => (
+              <div key={p.id} className="rounded-xl border border-gray-200 dark:border-gray-800 p-2 bg-white/70 dark:bg-gray-900/50">
+                <div className="aspect-video rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                  {p.processed_url || p.url ? (
+                    <img src={`${API_BASE}${p.processed_url || p.url}`} alt={p.title} className="w-full h-full object-cover" />
+                  ) : <div className="w-full h-full" />}
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="truncate text-sm font-semibold">{p.title}</div>
+                  <div className="text-sm text-teal-600 dark:text-teal-300">₹{p.price || 0}</div>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded ${p.for_sale ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`}>
+                    {p.for_sale ? 'For sale' : 'Not for sale'}
+                  </span>
+                  <button onClick={() => togglePublish(p)} className="px-2 py-1 rounded border dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-900">
+                    {p.for_sale ? 'Unpublish' : 'Publish'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-800 p-10 text-center bg-white/60 dark:bg-gray-900/40">
+            <div className="font-semibold">You have no items listed</div>
+            <div className="text-sm text-gray-500">Use the upload form to list photos for sale.</div>
+          </div>
+        )}
+      </div>
     </section>
   )
 }

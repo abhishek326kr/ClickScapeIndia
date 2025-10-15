@@ -10,6 +10,8 @@ class PhotoOut(BaseModel):
     price: float
     royalty_percent: Optional[float] = 0.15
     watermark: bool
+    for_sale: Optional[bool] = False
+    is_public: Optional[bool] = True
     url: Optional[str] = None
     processed_url: Optional[str] = None
     original_url: Optional[str] = None
@@ -32,3 +34,5 @@ class PhotoUpdate(BaseModel):
     tags: Optional[str] = None
     price: Optional[float] = None
     watermark: Optional[bool] = None
+    for_sale: Optional[bool] = None
+    is_public: Optional[bool] = None

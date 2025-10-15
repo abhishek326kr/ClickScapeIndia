@@ -133,7 +133,7 @@ class PhotoService:
         url = f"/uploads/{filename}"
         return file_path, url
 
-    async def upload_photo(self, title: str, category: str, tags: str, price: float, watermark: bool, image: UploadFile, user: User | None) -> PhotoOut:
+    async def upload_photo(self, title: str, category: str, tags: str, price: float, watermark: bool, image: UploadFile, user: User | None, for_sale: bool = False, is_public: bool = True) -> PhotoOut:
         # Validate by plan
         plan = get_plan(user)
         allowed_exts, max_bytes, _upload_limit = get_upload_rules(plan)
@@ -193,6 +193,8 @@ class PhotoService:
             processed_url=processed_url,
             original_url=original_url,
             bytes_size=(orig_size if plan == "premium" else 0),
+            for_sale=bool(for_sale),
+            is_public=bool(is_public),
             # Associate uploads with the current user for competition constraints and ownership
             # (was previously limited to premium only)
             user_id=(user.id if user else None),
@@ -202,6 +204,51 @@ class PhotoService:
         if plan == "premium":
             user.storage_used = (getattr(user, "storage_used", 0) or 0) + orig_size
             self.db.add(user)
+        self.db.commit()
+        self.db.refresh(photo)
+        return PhotoOut.from_orm(photo)
+
+    def list_marketplace(self, page: int, size: int) -> List[PhotoOut]:
+        q = self.db.query(Photo).filter(Photo.for_sale == True, Photo.is_public == True)  # noqa: E712
+        items = q.order_by(Photo.id.desc()).offset((page - 1) * size).limit(size).all()
+        results: List[PhotoOut] = []
+        user_ids = {x.user_id for x in items if x.user_id}
+        profiles = {}
+        if user_ids:
+            for p in self.db.query(Profile).filter(Profile.user_id.in_(list(user_ids))).all():
+                profiles[p.user_id] = p
+        for x in items:
+            base = PhotoOut.from_orm(x)
+            prof = profiles.get(x.user_id)
+            if prof:
+                data = base.model_dump()
+                data.update({
+                    "owner_name": prof.name or "",
+                    "owner_avatar_url": prof.avatar_url or "",
+                })
+                base = PhotoOut(**data)
+            results.append(base)
+        return results
+
+    def publish(self, photo_id: int, user: User) -> PhotoOut:
+        photo = self.get_photo(photo_id)
+        if not photo:
+            raise ValueError("Photo not found")
+        if photo.user_id and photo.user_id != user.id:
+            raise PermissionError("Not allowed")
+        photo.for_sale = True
+        photo.is_public = True
+        self.db.commit()
+        self.db.refresh(photo)
+        return PhotoOut.from_orm(photo)
+
+    def unpublish(self, photo_id: int, user: User) -> PhotoOut:
+        photo = self.get_photo(photo_id)
+        if not photo:
+            raise ValueError("Photo not found")
+        if photo.user_id and photo.user_id != user.id:
+            raise PermissionError("Not allowed")
+        photo.for_sale = False
         self.db.commit()
         self.db.refresh(photo)
         return PhotoOut.from_orm(photo)

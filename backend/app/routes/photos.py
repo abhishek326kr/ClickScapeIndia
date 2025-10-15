@@ -19,6 +19,8 @@ async def upload_photo(
     tags: Optional[str] = Form(""),
     price: Optional[float] = Form(0.0),
     watermark: Optional[bool] = Form(True),
+    for_sale: Optional[bool] = Form(False),
+    is_public: Optional[bool] = Form(True),
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -38,6 +40,8 @@ async def upload_photo(
             tags=tags or "",
             price=price or 0.0,
             watermark=(True if watermark is None else watermark),
+            for_sale=(False if for_sale is None else for_sale),
+            is_public=(True if is_public is None else is_public),
             image=image,
             user=user,
         )
