@@ -37,7 +37,7 @@ function MoonSunIcon() {
 export default function App() {
   const location = useLocation()
   const isAuthPage = location.pathname.startsWith('/auth')
-  const isPublicPage = location.pathname === '/' || isAuthPage || location.pathname.startsWith('/marketplace')
+  const isPublicPage = location.pathname === '/' || isAuthPage
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [dark, setDark] = useState(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('theme') : null

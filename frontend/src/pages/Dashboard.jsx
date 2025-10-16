@@ -7,22 +7,26 @@ import { useToast } from '../components/ToastProvider.jsx'
 export default function Dashboard() {
   const [photos, setPhotos] = useState([])
   const [myPhotos, setMyPhotos] = useState([])
+  const [marketItems, setMarketItems] = useState([])
   const [active, setActive] = useState(null)
   const [summary, setSummary] = useState({ participants: 0, votes_received: 0, my_uploads: 0 })
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState('competition') // 'competition' | 'marketplace'
   const toast = useToast()
 
   useEffect(() => {
     const run = async () => {
       try {
-        const [ph, sm, mine] = await Promise.all([
+        const [ph, sm, mine, mk] = await Promise.all([
           api.get('/photos'),
           api.get('/dashboard/summary').catch(() => ({ data: summary })),
           api.get('/photos/my').catch(() => ({ data: [] })),
+          api.get('/marketplace/list').catch(() => ({ data: [] })),
         ])
         setPhotos(ph.data || [])
         setSummary(sm.data || summary)
         setMyPhotos(mine.data || [])
+        setMarketItems(mk.data || [])
       } finally {
         setLoading(false)
       }
@@ -36,6 +40,22 @@ export default function Dashboard() {
       toast.push({ type: 'success', message: 'Vote recorded!' })
     } catch (e) {
       const msg = e?.response?.data?.detail || 'Failed to vote'
+      toast.push({ type: 'error', message: msg })
+    }
+  }
+
+  const togglePublish = async (p) => {
+    try {
+      const res = await api.post(`/marketplace/${p.for_sale ? 'unpublish' : 'publish'}/${p.id}`)
+      setMyPhotos((list) => list.map(x => x.id === p.id ? res.data : x))
+      if (!p.for_sale) {
+        try { const mk = await api.get('/marketplace/list'); setMarketItems(mk.data || []) } catch {}
+      } else {
+        setMarketItems((items) => items.filter(x => x.id !== p.id))
+      }
+      toast.push({ type: 'success', message: p.for_sale ? 'Unpublished' : 'Published' })
+    } catch (e) {
+      const msg = e?.response?.data?.detail || 'Action failed'
       toast.push({ type: 'error', message: msg })
     }
   }
@@ -63,6 +83,12 @@ export default function Dashboard() {
           <DarkModeToggle />
         </div>
       </div>
+
+      {/* Tabs */}
+      <div className="mb-6 flex items-center gap-2 border-b dark:border-gray-800">
+        <button onClick={() => setTab('competition')} className={`px-3 py-2 text-sm border-b-2 ${tab === 'competition' ? 'border-teal-500 text-teal-600 dark:text-teal-300' : 'border-transparent text-gray-600 dark:text-gray-400'}`}>Competition</button>
+        <button onClick={() => setTab('marketplace')} className={`px-3 py-2 text-sm border-b-2 ${tab === 'marketplace' ? 'border-teal-500 text-teal-600 dark:text-teal-300' : 'border-transparent text-gray-600 dark:text-gray-400'}`}>Marketplace</button>
+      </div>
       {loading ? (
         <div className="grid md:grid-cols-3 gap-4 mb-8">
           <SkeletonStat />
@@ -77,73 +103,120 @@ export default function Dashboard() {
         </div>
       )}
 
-      <h2 className="text-xl font-semibold mb-3">Recently shared</h2>
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-gray-200 dark:border-gray-800 p-2 bg-white/70 dark:bg-gray-900/50 animate-pulse">
-              <div className="aspect-video rounded-lg bg-gray-200 dark:bg-gray-800" />
-              <div className="mt-2 h-4 w-2/3 bg-gray-200 dark:bg-gray-800 rounded" />
+      {tab === 'competition' && (
+        <>
+          <h2 className="text-xl font-semibold mb-3">Recently shared</h2>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-gray-200 dark:border-gray-800 p-2 bg-white/70 dark:bg-gray-900/50 animate-pulse">
+                  <div className="aspect-video rounded-lg bg-gray-200 dark:bg-gray-800" />
+                  <div className="mt-2 h-4 w-2/3 bg-gray-200 dark:bg-gray-800 rounded" />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : (
-        photos.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {photos.map(p => (
-              <div key={p.id} onClick={() => setActive(p)} className="cursor-zoom-in rounded-xl transition-transform hover:-translate-y-0.5">
-                <PhotoCard photo={p} onVote={onVote} />
+          ) : (
+            photos.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {photos.map(p => (
+                  <div key={p.id} onClick={() => setActive(p)} className="cursor-zoom-in rounded-xl transition-transform hover:-translate-y-0.5">
+                    <PhotoCard photo={p} onVote={onVote} />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-800 p-10 text-center bg-white/60 dark:bg-gray-900/40">
-            <div className="mx-auto w-12 h-12 grid place-items-center rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 mb-3">
-              <CameraIcon />
-            </div>
-            <div className="font-semibold">No photos yet</div>
-            <div className="text-sm text-gray-500">Share your first photo to get started.</div>
-            <a href="/competition" className="mt-4 inline-block px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white text-sm font-semibold">Upload now</a>
-          </div>
-        )
+            ) : (
+              <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-800 p-10 text-center bg-white/60 dark:bg-gray-900/40">
+                <div className="mx-auto w-12 h-12 grid place-items-center rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 mb-3">
+                  <CameraIcon />
+                </div>
+                <div className="font-semibold">No photos yet</div>
+                <div className="text-sm text-gray-500">Share your first photo to get started.</div>
+                <a href="/competition" className="mt-4 inline-block px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white text-sm font-semibold">Upload now</a>
+              </div>
+            )
+          )}
+        </>
       )}
 
       <ImageModal src={active?.url ? `${API_BASE}${active.url}` : null} title={active?.title} onClose={() => setActive(null)} />
 
-      {/* My Marketplace section */}
-      <div className="mt-10">
-        <h2 className="text-xl font-semibold mb-3">My Marketplace</h2>
-        {myPhotos.length ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {myPhotos.map(p => (
-              <div key={p.id} className="rounded-xl border border-gray-200 dark:border-gray-800 p-2 bg-white/70 dark:bg-gray-900/50">
-                <div className="aspect-video rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                  {p.processed_url || p.url ? (
-                    <img src={`${API_BASE}${p.processed_url || p.url}`} alt={p.title} className="w-full h-full object-cover" />
-                  ) : <div className="w-full h-full" />}
+      {/* Marketplace tab content */}
+      {tab === 'marketplace' && (
+        <div>
+          <h2 className="text-xl font-semibold mb-3">Marketplace Items</h2>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-gray-200 dark:border-gray-800 p-2 bg-white/70 dark:bg-gray-900/50 animate-pulse">
+                  <div className="aspect-square rounded-lg bg-gray-200 dark:bg-gray-800" />
+                  <div className="mt-2 h-4 w-2/3 bg-gray-200 dark:bg-gray-800 rounded" />
                 </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <div className="truncate text-sm font-semibold">{p.title}</div>
-                  <div className="text-sm text-teal-600 dark:text-teal-300">₹{p.price || 0}</div>
-                </div>
-                <div className="mt-2 flex items-center justify-between text-xs">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded ${p.for_sale ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`}>
-                    {p.for_sale ? 'For sale' : 'Not for sale'}
-                  </span>
-                  <button onClick={() => togglePublish(p)} className="px-2 py-1 rounded border dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-900">
-                    {p.for_sale ? 'Unpublish' : 'Publish'}
-                  </button>
-                </div>
+              ))}
+            </div>
+          ) : marketItems.length ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {marketItems.map(p => (
+                <a key={p.id} href={`/marketplace/item/${p.id}`} className="rounded-xl border border-gray-200 dark:border-gray-800 p-2 bg-white/70 dark:bg-gray-900/50 block">
+                  <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                    {p.processed_url || p.url ? (
+                      <img src={`${API_BASE}${p.processed_url || p.url}`} alt={p.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full" />
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="font-semibold text-sm truncate">{p.title}</div>
+                    <div className="text-teal-600 dark:text-teal-300 text-sm">₹{p.price || 0}</div>
+                  </div>
+                  {p.owner_name && (
+                    <div className="text-xs text-gray-500 truncate">by {p.owner_name}</div>
+                  )}
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-800 p-10 text-center bg-white/60 dark:bg-gray-900/40">
+              <div className="font-semibold">No items yet</div>
+              <div className="text-sm text-gray-500">Publish items from your uploads below.</div>
+            </div>
+          )}
+
+          {/* My Marketplace (only for-sale) */}
+          <div className="mt-10">
+            <h2 className="text-xl font-semibold mb-3">My Marketplace</h2>
+            {myPhotos.filter(p => p.for_sale).length ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {myPhotos.filter(p => p.for_sale).map(p => (
+                  <div key={p.id} className="rounded-xl border border-gray-200 dark:border-gray-800 p-2 bg-white/70 dark:bg-gray-900/50">
+                    <div className="aspect-video rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                      {p.processed_url || p.url ? (
+                        <img src={`${API_BASE}${p.processed_url || p.url}`} alt={p.title} className="w-full h-full object-cover" />
+                      ) : <div className="w-full h-full" />}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="truncate text-sm font-semibold">{p.title}</div>
+                      <div className="text-sm text-teal-600 dark:text-teal-300">₹{p.price || 0}</div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded ${p.for_sale ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`}>
+                        {p.for_sale ? 'For sale' : 'Not for sale'}
+                      </span>
+                      <button onClick={() => togglePublish(p)} className="px-2 py-1 rounded border dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-900">
+                        {p.for_sale ? 'Unpublish' : 'Publish'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-800 p-10 text-center bg-white/60 dark:bg-gray-900/40">
+                <div className="font-semibold">You have no items listed</div>
+                <div className="text-sm text-gray-500">Use the upload form to list photos for sale.</div>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-800 p-10 text-center bg-white/60 dark:bg-gray-900/40">
-            <div className="font-semibold">You have no items listed</div>
-            <div className="text-sm text-gray-500">Use the upload form to list photos for sale.</div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </section>
   )
 }
