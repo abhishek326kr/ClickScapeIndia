@@ -1,9 +1,10 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import api from '../lib/api.js'
 
 export default function ProtectedRoute({ children }) {
   const [status, setStatus] = useState('checking') // checking | ok | no
+  const location = useLocation()
 
   useEffect(() => {
     let mounted = true
@@ -27,6 +28,9 @@ export default function ProtectedRoute({ children }) {
     )
   }
   // Single redirect render path (no imperative navigate) for reliability
-  if (status === 'no') return <Navigate to="/auth" replace />
+  if (status === 'no') {
+    const next = encodeURIComponent(location?.pathname || '/')
+    return <Navigate to={`/auth?mode=login&next=${next}`} replace />
+  }
   return children
 }

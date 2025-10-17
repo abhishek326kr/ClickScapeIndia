@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import UploadForm from '../components/UploadForm.jsx'
 import api, { API_BASE } from '../lib/api.js'
+import { useToast } from '../components/ToastProvider.jsx'
 
 export default function Competition() {
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
+  const [unauthorized, setUnauthorized] = useState(false)
   const [joining, setJoining] = useState(false)
   const [participation, setParticipation] = useState(null)
   const [addonSlots, setAddonSlots] = useState(0)
@@ -19,8 +22,15 @@ export default function Competition() {
     try {
       const res = await api.get('/competitions/me')
       setParticipation(res.data || null)
-    } catch (_) {
+      setUnauthorized(false)
+    } catch (e) {
       setParticipation(null)
+      if (e?.response?.status === 401) {
+        setUnauthorized(true)
+      } else {
+        setUnauthorized(false)
+        try { toast.push({ type: 'error', message: 'Unable to load participation. Please try again.' }) } catch {}
+      }
     } finally {
       setLoading(false)
     }
@@ -33,14 +43,15 @@ export default function Competition() {
       try { const lb = await api.get('/leaderboard'); setLeaderboard(lb.data || []) } catch { setLeaderboard([]) }
     })()
   }, [])
-
   const join = async (plan) => {
     setJoining(true)
     try {
       const res = await api.post('/competitions/join', { plan, addon_slots: addonSlots })
       setParticipation(res.data)
-    } catch (_) {
-      // no-op for now; could show toast
+      toast.push({ type: 'success', message: 'Joined competition successfully' })
+    } catch (e) {
+      const msg = e?.response?.data?.detail || 'Failed to join competition'
+      toast.push({ type: 'error', message: msg })
     } finally {
       setJoining(false)
     }
@@ -61,9 +72,11 @@ export default function Competition() {
       setBatchMsg('Batch uploaded successfully')
       setBatch({ title: '', category: 'uncategorized', tags: '', price: '' })
       setBatchFiles([])
+      toast.push({ type: 'success', message: 'Batch uploaded successfully' })
     } catch (e) {
       const msg = e?.response?.data?.detail || 'Batch upload failed'
       setBatchMsg(msg)
+      toast.push({ type: 'error', message: msg })
     }
   }
 
@@ -72,6 +85,12 @@ export default function Competition() {
       <h2 className="text-2xl font-bold mb-6">Competition Participation</h2>
       {loading ? (
         <div>Loading...</div>
+      ) : unauthorized ? (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-6">
+          <div className="text-lg font-semibold mb-1">You are not signed in</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300 mb-4">Please sign in to join the competition.</div>
+          <a href="/auth?mode=login" className="inline-block px-4 py-2 rounded bg-teal-600 hover:bg-teal-700 text-white">Go to Login</a>
+        </div>
       ) : !participation || !participation.entry_paid ? (
         <div className="grid md:grid-cols-2 gap-6">
           <div className="rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
@@ -85,7 +104,7 @@ export default function Competition() {
               <label className="text-sm">Add-on slots</label>
               <input type="number" min={0} className="w-24 border px-2 py-1 rounded" value={addonSlots} onChange={e => setAddonSlots(parseInt(e.target.value || '0', 10))} />
             </div>
-            <button disabled={joining} onClick={() => join('enthusiast')} className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded disabled:opacity-60">Join as Enthusiast</button>
+            <button disabled={joining} onClick={() => join('enthusiast')} className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded disabled:opacity-60">{joining ? 'Joining...' : 'Join as Enthusiast'}</button>
           </div>
           <div className="rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
             <h3 className="text-xl font-bold mb-2">Passionate & Professional</h3>
@@ -94,7 +113,7 @@ export default function Competition() {
               <li>Benefits: Internship & Mentorship included</li>
               <li>Unlimited learning resources</li>
             </ul>
-            <button disabled={joining} onClick={() => join('creator_plus')} className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black rounded font-semibold disabled:opacity-60">Join Creator+</button>
+            <button disabled={joining} onClick={() => join('creator_plus')} className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black rounded font-semibold disabled:opacity-60">{joining ? 'Joining...' : 'Join Creator+'}</button>
           </div>
         </div>
       ) : (
