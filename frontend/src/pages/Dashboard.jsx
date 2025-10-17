@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import PhotoCard from '../components/PhotoCard.jsx'
 import ImageModal from '../components/ImageModal.jsx'
 import api, { API_BASE } from '../lib/api.js'
@@ -156,10 +157,10 @@ export default function Dashboard() {
           ) : marketItems.length ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {marketItems.map(p => (
-                <a key={p.id} href={`/marketplace/item/${p.id}`} className="rounded-xl border border-gray-200 dark:border-gray-800 p-2 bg-white/70 dark:bg-gray-900/50 block">
+                <Link key={p.id} to={`/product/${p.id}`} className="rounded-xl border border-gray-200 dark:border-gray-800 p-2 bg-white/70 dark:bg-gray-900/50 block">
                   <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
                     {p.processed_url || p.url ? (
-                      <img src={`${API_BASE}${p.processed_url || p.url}`} alt={p.title} className="w-full h-full object-cover" />
+                      <img src={`${API_BASE}${p.processed_url || p.url}`} alt={p.title} className="w-full h-full object-cover pointer-events-none select-none" loading="lazy" draggable={false} onContextMenu={(e) => e.preventDefault()} referrerPolicy="no-referrer" />
                     ) : (
                       <div className="w-full h-full" />
                     )}
@@ -171,7 +172,7 @@ export default function Dashboard() {
                   {p.owner_name && (
                     <div className="text-xs text-gray-500 truncate">by {p.owner_name}</div>
                   )}
-                </a>
+                </Link>
               ))}
             </div>
           ) : (

@@ -1,12 +1,24 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import api, { API_BASE } from '../lib/api.js'
 import Navbar from '../components/Navbar.jsx'
+import Footer from '../components/Footer.jsx'
 
 export default function Landing() {
   const navigate = useNavigate()
   const [mpItems, setMpItems] = useState([])
   const [mpLoading, setMpLoading] = useState(true)
+  const sample = [
+    // Unsplash royalty-free sample shots (distinct to avoid collisions)
+    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?q=80&w=1200&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1491553895911-0055eca6402d?q=80&w=1200&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1499084732479-de2c02d45fc4?q=80&w=1200&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1200&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1443890923422-7819ed4101c0?q=80&w=1200&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1500534314209-98908c3a02d7?q=80&w=1200&auto=format&fit=crop',
+  ]
 
   const goRegister = () => navigate('/auth?mode=register')
   const goGallery = () => navigate('/gallery')
@@ -75,12 +87,13 @@ export default function Landing() {
           </div>
           <div className="relative">
             <div className="aspect-[4/3] rounded-2xl bg-gradient-to-tr from-teal-600 to-cyan-500 opacity-90 blur-2xl absolute inset-0 -z-10" />
-            <div className="rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/10 flex items-center justify-center bg-gradient-to-br from-gray-100 to-white dark:from-gray-800 dark:to-gray-900">
-              <div className="p-6 grid grid-cols-2 gap-4 w-full">
-                <HeroCard icon="🌄" title="Landscape" subtitle="Golden hours" />
-                <HeroCard icon="🦁" title="Wildlife" subtitle="Untamed moments" />
-                <HeroCard icon="👤" title="Portrait" subtitle="Stories in eyes" />
-                <HeroCard icon="🌃" title="Street" subtitle="City rhythms" />
+            <div className="rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/10 bg-white/90 dark:bg-gray-900/80">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 sm:p-4">
+                {sample.slice(0,4).map((src,i) => (
+                  <div key={i} className="rounded-xl overflow-hidden aspect-video bg-gray-100 dark:bg-gray-800">
+                    <img src={src} alt={`hero-${i}`} className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer"/>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -103,17 +116,25 @@ export default function Landing() {
           ) : mpItems.length ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {mpItems.map(p => (
-                <a key={p.id} href={`/marketplace/item/${p.id}`} className="block rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50">
-                  <div className="aspect-square">
+                <Link key={p.id} to={`/product/${p.id}`} className="block rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50">
+                  <div className="aspect-square select-none">
                     {p.processed_url || p.url ? (
-                      <img src={`${API_BASE}${p.processed_url || p.url}`} alt={p.title} className="w-full h-full object-cover" />
+                      <img
+                        src={`${API_BASE}${p.processed_url || p.url}`}
+                        alt={p.title}
+                        className="w-full h-full object-cover pointer-events-none"
+                        loading="lazy"
+                        draggable={false}
+                        onContextMenu={(e) => e.preventDefault()}
+                        referrerPolicy="no-referrer"
+                      />
                     ) : <div className="w-full h-full" />}
                   </div>
                   <div className="p-2 flex items-center justify-between">
                     <div className="text-sm font-semibold truncate">{p.title}</div>
                     <div className="text-sm text-teal-600 dark:text-teal-300">₹{p.price || 0}</div>
                   </div>
-                </a>
+                </Link>
               ))}
             </div>
           ) : (
@@ -154,9 +175,11 @@ export default function Landing() {
             Each frame is a glimpse into a creator’s heart — full of color, emotion, and imagination.
           </p>
           <div className="grid sm:grid-cols-3 gap-4">
-            <div className="aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-teal-200 to-teal-400 dark:from-teal-700 dark:to-teal-500 flex items-center justify-center text-4xl">🌄</div>
-            <div className="aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-cyan-200 to-cyan-400 dark:from-cyan-700 dark:to-cyan-500 flex items-center justify-center text-4xl">🌆</div>
-            <div className="aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-amber-200 to-amber-400 dark:from-amber-700 dark:to-amber-500 flex items-center justify-center text-4xl">🌌</div>
+            {sample.slice(4,7).map((src,i) => (
+              <div key={i} className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+                <img src={src} alt={`teaser-${i}`} className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer"/>
+              </div>
+            ))}
           </div>
           <div className="mt-6">
             <button onClick={goGallery} className="px-5 py-3 rounded-lg bg-gray-900 text-white hover:bg-black dark:bg-white dark:text-gray-900 font-medium inline-flex items-center gap-2">
@@ -196,6 +219,7 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   )
 }

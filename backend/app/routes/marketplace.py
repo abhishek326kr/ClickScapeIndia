@@ -54,6 +54,10 @@ def get_marketplace_item(photo_id: int, db: Session = Depends(get_db)):
 # Auth: publish/unpublish
 @router.post("/publish/{photo_id}", response_model=PhotoOut)
 def publish(photo_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # Enforce creator-only publishing (treat 'participant'/'enthusiast'/'free' as non-creator)
+    role = (getattr(user, "role", "") or "").lower()
+    if role in {"participant", "enthusiast", "free"}:
+        raise HTTPException(status_code=403, detail="Creator role required to publish")
     svc = PhotoService(db)
     try:
         return svc.publish(photo_id, user)
@@ -65,6 +69,9 @@ def publish(photo_id: int, db: Session = Depends(get_db), user: User = Depends(g
 
 @router.post("/unpublish/{photo_id}", response_model=PhotoOut)
 def unpublish(photo_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    role = (getattr(user, "role", "") or "").lower()
+    if role in {"participant", "enthusiast", "free"}:
+        raise HTTPException(status_code=403, detail="Creator role required to unpublish")
     svc = PhotoService(db)
     try:
         return svc.unpublish(photo_id, user)

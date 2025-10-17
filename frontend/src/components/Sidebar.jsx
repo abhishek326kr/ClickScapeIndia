@@ -2,15 +2,23 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import api from '../lib/api.js'
 
-export default function Sidebar({ width = 260, open, onClose, onOpen }) {
+export default function Sidebar({ width = 260, open, onClose, onOpen, desktopPinned = true }) {
   const [authed, setAuthed] = useState(false)
+  const [me, setMe] = useState(null)
   const navigate = useNavigate()
   const closeBtnRef = useRef(null)
 
 
   useEffect(() => {
     const handler = async () => {
-      try { await api.get('/auth/me'); setAuthed(true) } catch { setAuthed(false) }
+      try {
+        const res = await api.get('/auth/me')
+        setAuthed(true)
+        setMe(res?.data || null)
+      } catch {
+        setAuthed(false)
+        setMe(null)
+      }
     }
     handler()
     window.addEventListener('auth:changed', handler)
@@ -45,7 +53,7 @@ export default function Sidebar({ width = 260, open, onClose, onOpen }) {
     <>
       {/* Backdrop for mobile */}
       <div className={`fixed inset-0 z-40 bg-black/40 md:hidden ${open ? '' : 'hidden'}`} onClick={onClose} />
-      <aside style={{ width }} className={`fixed z-50 top-0 left-0 h-full border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 transform transition-transform md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside style={{ width }} className={`fixed z-50 top-0 left-0 h-full border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 transform transition-transform ${open ? 'translate-x-0' : '-translate-x-full'} ${desktopPinned ? 'md:translate-x-0' : ''}`}>
         <div className="h-14 flex items-center justify-between px-4 border-b dark:border-gray-800">
           <div className="text-xl font-bold">ClickScape<span className="text-yellow-400">India</span></div>
           <button ref={closeBtnRef} className="md:hidden px-3 py-2 rounded border dark:border-gray-700" onClick={onClose}>Close</button>
@@ -73,6 +81,15 @@ export default function Sidebar({ width = 260, open, onClose, onOpen }) {
               My Gallery
             </span>
           </NavLink>
+          {((me?.plan === 'premium') || ['creator','admin'].includes((me?.role || '').toLowerCase())) && (
+            <NavLink to="/dashboard/ai-lab" className={linkClass} onClick={onClose}>
+              <span className="absolute left-0 top-0 bottom-0 w-1 rounded-r bg-teal-500 opacity-0 group-[.active]:opacity-100" />
+              <span className="inline-flex items-center gap-3">
+                <MagicIcon />
+                AI Lab
+              </span>
+            </NavLink>
+          )}
           <NavLink to="/marketplace" className={linkClass} onClick={onClose}>
             <span className="absolute left-0 top-0 bottom-0 w-1 rounded-r bg-teal-500 opacity-0 group-[.active]:opacity-100" />
             <span className="inline-flex items-center gap-3">
@@ -85,6 +102,13 @@ export default function Sidebar({ width = 260, open, onClose, onOpen }) {
             <span className="inline-flex items-center gap-3">
               <DashboardIcon />
               My Votes
+            </span>
+          </NavLink>
+          <NavLink to="/dashboard/purchases" className={linkClass} onClick={onClose}>
+            <span className="absolute left-0 top-0 bottom-0 w-1 rounded-r bg-teal-500 opacity-0 group-[.active]:opacity-100" />
+            <span className="inline-flex items-center gap-3">
+              <PurchaseIcon />
+              Purchases
             </span>
           </NavLink>
           <NavLink to="/profile" className={linkClass} onClick={onClose}>
@@ -136,6 +160,14 @@ function GalleryIcon() {
     </IconBase>
   )
 }
+function MagicIcon() {
+  return (
+    <IconBase>
+      <path d="M3 21l9-9M13 3l8 8M9 7l8 8M7 17l2 2" />
+      <path d="M14 3l7 7" />
+    </IconBase>
+  )
+}
 function StoreIcon() {
   return (
     <IconBase>
@@ -147,6 +179,16 @@ function DashboardIcon() {
   return (
     <IconBase>
       <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+    </IconBase>
+  )
+}
+
+function PurchaseIcon() {
+  return (
+    <IconBase>
+      <path d="M6 2l1.5 3H20l-2 12a2 2 0 0 1-2 1.6H8.5a2 2 0 0 1-2-1.6L4 5h4" />
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="17" cy="21" r="1" />
     </IconBase>
   )
 }

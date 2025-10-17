@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import api, { API_BASE } from '../lib/api.js'
 
 export default function MarketplaceItem() {
   const { id } = useParams()
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const run = async () => {
@@ -39,6 +40,24 @@ export default function MarketplaceItem() {
     )
   }
 
+  const buyNow = async () => {
+    // Check auth
+    try {
+      await api.get('/auth/me')
+      // Authenticated: add to cart and go to cart
+      try {
+        const raw = localStorage.getItem('cart')
+        let cart = raw ? JSON.parse(raw) : []
+        if (!cart.includes(id)) cart.push(id)
+        localStorage.setItem('cart', JSON.stringify(cart))
+      } catch {}
+      navigate(`/dashboard/cart?add=${id}`)
+    } catch {
+      // Not authed: redirect to login with next to cart
+      navigate(`/auth?mode=login&next=${encodeURIComponent(`/dashboard/cart?add=${id}`)}`)
+    }
+  }
+
   return (
     <section className="max-w-5xl mx-auto px-4 py-10">
       <div className="grid md:grid-cols-2 gap-6">
@@ -57,7 +76,7 @@ export default function MarketplaceItem() {
             <div className="mt-2 text-sm text-gray-500">by {item.owner_name}</div>
           )}
           <div className="mt-6">
-            <button className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white">Buy (placeholder)</button>
+            <button onClick={buyNow} className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white">Buy</button>
           </div>
           <div className="mt-3">
             <Link to="/marketplace" className="text-sm text-gray-500 hover:underline">Back to marketplace</Link>

@@ -5,6 +5,10 @@ import Competition from './pages/Competition.jsx'
 import Gallery from './pages/Gallery.jsx'
 import Marketplace from './pages/Marketplace.jsx'
 import MarketplaceItem from './pages/MarketplaceItem.jsx'
+import Cart from './pages/Cart.jsx'
+import Checkout from './pages/Checkout.jsx'
+import Purchases from './pages/Purchases.jsx'
+import AiLab from './pages/AiLab.jsx'
 import Profile from './pages/Profile.jsx'
 import Auth from './pages/Auth.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
@@ -88,7 +92,13 @@ export default function App() {
               <Route path="/gallery" element={<ProtectedRoute><Gallery /></ProtectedRoute>} />
               {/* Marketplace is public for browsing */}
               <Route path="/marketplace" element={<Marketplace />} />
-              <Route path="/marketplace/item/:id" element={<MarketplaceItem />} />
+              {/* Use a non-conflicting SPA route to avoid clashing with backend API paths */}
+              <Route path="/product/:id" element={<MarketplaceItem />} />
+              {/* Cart/Checkout under dashboard */}
+              <Route path="/dashboard/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+              <Route path="/dashboard/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+              <Route path="/dashboard/purchases" element={<ProtectedRoute><Purchases /></ProtectedRoute>} />
+              <Route path="/dashboard/ai-lab" element={<ProtectedRoute><AiLab /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/my-votes" element={<ProtectedRoute><MyVotes /></ProtectedRoute>} />
               <Route path="/auth" element={<Auth />} />

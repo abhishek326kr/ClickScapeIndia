@@ -31,7 +31,8 @@ export async function logoutClientSide() {
   try { toast({ type: 'success', message: 'Logged out' }) } catch {}
   try { window.dispatchEvent(new Event('auth:changed')) } catch {}
   if (typeof window !== 'undefined') {
-    window.location.href = '/auth'
+    // Small delay to allow toast to render before navigation
+    setTimeout(() => { window.location.assign('/auth') }, 200)
   }
 }
 
@@ -40,6 +41,17 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config || {}
     if (error.response && error.response.status === 401 && !original._retry) {
+      // Do NOT attempt refresh on auth endpoints; surface backend message instead
+      const urlStr = String(original?.url || '')
+      const isAuthEndpoint = urlStr.includes('/auth/login') || urlStr.includes('/auth/signup') || urlStr.includes('/auth/forgot-password')
+      if (isAuthEndpoint) {
+        const data = error.response?.data
+        let message = 'Unauthorized'
+        if (typeof data === 'string') message = data
+        else if (data?.detail) message = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)
+        toast({ type: 'error', message })
+        return Promise.reject(error)
+      }
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           pendingQueue.push({ resolve, reject })
@@ -53,7 +65,12 @@ api.interceptors.response.use(
         return api(original)
       } catch (e) {
         processQueue(e)
-        toast({ type: 'error', message: 'Session expired. Please sign in again.' })
+        // Prefer backend reason if present
+        const data = error?.response?.data
+        let message = 'Session expired. Please sign in again.'
+        if (typeof data === 'string') message = data
+        else if (data?.detail) message = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)
+        toast({ type: 'error', message })
         await logoutClientSide()
         return Promise.reject(e)
       } finally {

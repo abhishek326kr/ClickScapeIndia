@@ -1,10 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 from sqlalchemy import text
 
 from .routes import auth, photos, votes, leaderboard, users, competitions, marketplace
+from .routes import secure as secure_routes
+from .routes import payment as payment_routes
 from .routes import ai as ai_routes
 from .routes import dashboard
 from .database import Base, engine
@@ -56,7 +58,9 @@ app.include_router(users.router, prefix="/users", tags=["users"])  # placeholder
 app.include_router(competitions.router, prefix="/competitions", tags=["competitions"])  # placeholder
 app.include_router(marketplace.router, prefix="/marketplace", tags=["marketplace"])  # placeholder
 app.include_router(dashboard.router, tags=["dashboard"])  # contains /dashboard/summary
+app.include_router(secure_routes.router, tags=["secure"])  # /secure/download
 app.include_router(ai_routes.router, prefix="/ai", tags=["ai"])  # premium-only features
+app.include_router(payment_routes.router, prefix="/payment", tags=["payment"])  # payments
 
 # Create tables in development (use Alembic for migrations in production)
 Base.metadata.create_all(bind=engine)
@@ -100,3 +104,24 @@ _ensure_sqlite_column("photos", "bytes_size", "bytes_size INTEGER DEFAULT 0")
 _ensure_sqlite_column("photos", "royalty_percent", "royalty_percent FLOAT DEFAULT 0.15")
 _ensure_sqlite_column("photos", "for_sale", "for_sale BOOLEAN DEFAULT 0")
 _ensure_sqlite_column("photos", "is_public", "is_public BOOLEAN DEFAULT 1")
+_ensure_sqlite_column("photos", "competition_entry", "competition_entry BOOLEAN DEFAULT 0")
+
+# New dev columns for roles and payments
+_ensure_sqlite_column("users", "role", "role VARCHAR(32) DEFAULT 'free'")
+_ensure_sqlite_column("users", "referral_code", "referral_code VARCHAR(64) DEFAULT ''")
+_ensure_sqlite_column("users", "referred_by", "referred_by VARCHAR(64) DEFAULT ''")
+_ensure_sqlite_column("payments", "photo_ids", "photo_ids TEXT DEFAULT ''")
+_ensure_sqlite_column("payments", "status", "status VARCHAR(32) DEFAULT 'pending'")
+_ensure_sqlite_column("payments", "txn_id", "txn_id VARCHAR(128)")
+_ensure_sqlite_column("payments", "created_at", "created_at INTEGER DEFAULT 0")
+
+
+# Basic security headers middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    resp = await call_next(request)
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "DENY")
+    # CSP is restrictive for API; limit to none by default for static download route already set in handler
+    resp.headers.setdefault("Referrer-Policy", "no-referrer")
+    return resp

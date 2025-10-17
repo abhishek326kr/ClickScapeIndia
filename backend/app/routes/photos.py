@@ -9,6 +9,8 @@ from ..models.user import User
 from ..services.plan_service import get_plan, get_upload_rules
 from ..models.photo import Photo
 from ..models.participation import Participation
+import os, time, hmac, hashlib
+from urllib.parse import quote
 
 router = APIRouter()
 
@@ -163,11 +165,21 @@ async def upload_batch(
 def export_photo(photo_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     service = PhotoService(db)
     try:
+        # Determine underlying path (processed or original)
         url = service.export_photo_url(photo_id, user)
         plan = get_plan(user)
         quality = "high" if plan == "premium" else "web"
         if not url:
             raise HTTPException(status_code=404, detail="Export not available")
-        return {"url": url, "quality": quality}
+        # Produce a short-lived signed URL via /secure/download
+        # url is expected to be an app-internal path like /uploads/<file>
+        path = url
+        exp_secs = int(os.getenv("DOWNLOAD_TTL", "300"))  # 5 minutes default
+        exp = int(time.time()) + max(60, exp_secs)
+        secret = os.getenv("DOWNLOAD_SECRET", os.getenv("SECRET_KEY", "change-me"))
+        msg = f"{path}|{exp}".encode()
+        sig = hmac.new(secret.encode(), msg, hashlib.sha256).hexdigest()
+        signed = f"/secure/download?path={quote(path)}&exp={exp}&sig={sig}"
+        return {"url": signed, "quality": quality}
     except ValueError:
         raise HTTPException(status_code=404, detail="Photo not found")

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import UploadForm from '../components/UploadForm.jsx'
-import api from '../lib/api.js'
+import api, { API_BASE } from '../lib/api.js'
 
 export default function Competition() {
   const [loading, setLoading] = useState(true)
@@ -10,6 +10,10 @@ export default function Competition() {
   const [batch, setBatch] = useState({ title: '', category: 'uncategorized', tags: '', price: '' })
   const [batchFiles, setBatchFiles] = useState([])
   const [batchMsg, setBatchMsg] = useState('')
+  const [myPhotos, setMyPhotos] = useState([])
+  const [submitPhotoId, setSubmitPhotoId] = useState('')
+  const [submitMsg, setSubmitMsg] = useState('')
+  const [leaderboard, setLeaderboard] = useState([])
 
   const fetchParticipation = async () => {
     try {
@@ -24,6 +28,10 @@ export default function Competition() {
 
   useEffect(() => {
     fetchParticipation()
+    ;(async () => {
+      try { const ph = await api.get('/photos/my'); setMyPhotos(ph.data || []) } catch { setMyPhotos([]) }
+      try { const lb = await api.get('/leaderboard'); setLeaderboard(lb.data || []) } catch { setLeaderboard([]) }
+    })()
   }, [])
 
   const join = async (plan) => {
@@ -134,6 +142,51 @@ export default function Competition() {
               <button className="px-4 py-2 bg-gray-900 hover:bg-black text-white rounded-lg">Upload Batch</button>
               {batchMsg && <div className="text-sm text-gray-600">{batchMsg}</div>}
             </form>
+          </div>
+
+          <div className="mt-10">
+            <h4 className="text-lg font-bold mb-2">Submit to Competition</h4>
+            <p className="text-sm text-gray-500 mb-3">Pick one of your uploaded photos to submit as an entry.</p>
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {myPhotos.map(p => (
+                <label key={p.id} className={`block rounded-xl border ${String(submitPhotoId)===String(p.id)?'border-teal-500':'border-gray-200 dark:border-gray-800'} overflow-hidden cursor-pointer`}>
+                  <input type="radio" name="entry" className="hidden" value={p.id} onChange={() => setSubmitPhotoId(p.id)} />
+                  <div className="aspect-square bg-gray-100 dark:bg-gray-800">
+                    {p.processed_url || p.url ? (
+                      <img src={`${API_BASE}${p.processed_url || p.url}`} alt={p.title} className="w-full h-full object-cover" />
+                    ) : null}
+                  </div>
+                  <div className="p-2 text-sm truncate">{p.title || `Photo #${p.id}`}</div>
+                </label>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <button onClick={submitEntry} className="px-4 py-2 rounded bg-teal-600 hover:bg-teal-700 text-white">Submit Entry</button>
+              {submitMsg && <div className="text-sm text-gray-600">{submitMsg}</div>}
+            </div>
+          </div>
+
+          <div className="mt-10">
+            <h4 className="text-lg font-bold mb-2">Leaderboard</h4>
+            {leaderboard?.length ? (
+              <div className="grid md:grid-cols-3 gap-4">
+                {leaderboard.map((e, idx) => (
+                  <div key={idx} className="rounded-xl border dark:border-gray-800 p-2 bg-white/70 dark:bg-gray-900/50">
+                    <div className="aspect-video rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                      {e.photo?.processed_url || e.photo?.url ? (
+                        <img src={`${API_BASE}${e.photo.processed_url || e.photo.url}`} alt={e.photo?.title || ''} className="w-full h-full object-cover" />
+                      ) : <div className="w-full h-full" />}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-sm">
+                      <div className="truncate">{e.photo?.title || 'Untitled'}</div>
+                      <div className="font-semibold">{e.votes} votes</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">No leaderboard entries yet.</div>
+            )}
           </div>
         </div>
       )}
